@@ -1,0 +1,22 @@
+{
+  "name": "@balancer-labs/balancer-examples",
+  "private": true,
+  "description": "Examples for building on Balancer V2",
+  "license": "GPL-3.0-only",
+  "homepage": "https://github.com/balancer-labs/balancer-examples#readme",
+  "repository": "git@github.com:balancer-labs/balancer-examples.git",
+  "bugs": {
+    "url": "https://github.com/balancer-labs/balancer-examples/issues"
+  },
+  "engines": {
+    "node": ">=12.10"
+  },
+  "scripts": {
+    "build": "yarn workspaces foreach --parallel --verbose  run build",
+    "lint": "yarn workspaces foreach --parallel --verbose run lint",
+    "test": "yarn workspaces foreach --parallel --verbose run test"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
+}

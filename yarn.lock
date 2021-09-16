@@ -113,7 +113,7 @@ __metadata:
   resolution: "@balancer-examples/shared-dependencies@workspace:packages/shared-dependencies"
   dependencies:
     "@balancer-labs/typechain": ^1.0.0
-    "@balancer-labs/v2-deployments": ^2.1.3
+    "@balancer-labs/v2-deployments": ^2.2.0
     "@balancer-labs/v2-pool-utils": ^2.0.1
     "@balancer-labs/v2-pool-weighted": ^2.0.1
     "@balancer-labs/v2-solidity-utils": ^2.0.0
@@ -161,7 +161,7 @@ __metadata:
   dependencies:
     "@balancer-examples/balancer-js": "workspace:packages/balancer-js"
     "@balancer-labs/typechain": ^1.0.0
-    "@balancer-labs/v2-deployments": ^2.1.3
+    "@balancer-labs/v2-deployments": ^2.2.0
     "@balancer-labs/v2-pool-utils": ^2.0.1
     "@balancer-labs/v2-pool-weighted": ^2.0.1
     "@balancer-labs/v2-solidity-utils": ^2.0.0
@@ -218,13 +218,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@balancer-labs/v2-deployments@npm:^2.1.3":
-  version: 2.1.3
-  resolution: "@balancer-labs/v2-deployments@npm:2.1.3"
+"@balancer-labs/v2-deployments@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "@balancer-labs/v2-deployments@npm:2.2.0"
   peerDependencies:
     "@nomiclabs/hardhat-ethers": ^2.0.1
     hardhat: ^2.4.1
-  checksum: 86face2593b9ae02ecb66f37c213304d91745b9611b49947cf6d4dedaeb3fa597dd02fbdd0aee026776dc29a1556f81a12bba576da11b91c1ff0500769fd06fe
+  checksum: 25b46a8c6b9375d120a75b656ec8c2d4d4409f6a7617a3c22f149572239eb68f60e39d186fe905d5cf825b0201de0fe8e6f1a0caf48e501b54d34b1a09a4530a
   languageName: node
   linkType: hard
 

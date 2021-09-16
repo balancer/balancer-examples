@@ -1,21 +1,19 @@
 import { assert } from 'console';
 import { ethers } from 'hardhat';
-import { BigNumber } from '@ethersproject/bignumber';
+import { formatFixed, parseFixed } from '@ethersproject/bignumber';
 import { MaxUint256, One } from '@ethersproject/constants';
 
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import {
   TokenList,
-  printGas,
   pickTokenAddresses,
   setupEnvironment,
   txConfirmation,
+  getBalancerContractArtifact,
 } from '@balancer-examples/shared-dependencies';
 import {
   Vault,
-  Vault__factory,
-  WeightedPool,
   WeightedPoolFactory,
   WeightedPoolFactory__factory,
   WeightedPool__factory,
@@ -24,23 +22,34 @@ import {
 import { WeightedPoolEncoder, toNormalizedWeights } from '@balancer-examples/balancer-js';
 
 // setup environment
-const BPTAmount = BigNumber.from(1e18);
+const BPTAmount = parseFixed('1', 18);
 
 let vault: Vault;
 let tokens: TokenList;
 let trader: SignerWithAddress;
 
 async function main() {
+  /**
+   * First we need to deploy the Vault and any tokens we're going to use
+   */
   ({ vault, tokens, trader } = await setupEnvironment());
 
+  /**
+   * We need to have a pool for us to add liquidity to
+   * Balancer Pools are deployed from factories so let's deploy a factory for Weighted Pools.
+   */
   const weightedPoolFactory = await deployWeightedPoolFactory(vault, trader);
+  console.log(`Successfully deployed ${await pool.name()} to ${pool.address}! 🎉\n`);
 
-  // Deploy our new pool
-  const name = 'My Pool';
+  /**
+   * Now we can deploy our WeightedPool from the factory contract
+   * Try changing some of the pool's settings!
+   */
+  const name = 'My New Balancer Pool';
   const symbol = 'POOL';
   const poolTokens = pickTokenAddresses(tokens, 2);
   const normalizedWeights = toNormalizedWeights(poolTokens.map(() => One));
-  const swapFeePercentage = BigNumber.from(1e12);
+  const swapFeePercentage = parseFixed('1', 12);
   const delegateOwner = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
   const deploymentReceipt = await txConfirmation(
     weightedPoolFactory.create(name, symbol, poolTokens, normalizedWeights, swapFeePercentage, delegateOwner)
@@ -50,46 +59,51 @@ async function main() {
   if (event == undefined) {
     throw new Error('Could not find PoolCreated event');
   }
-
   const pool = WeightedPool__factory.connect(event.args?.pool, trader);
+  const poolId = await pool.getPoolId();
 
-  // Add initial liquidity to the pool
-  await joinPool(pool, true);
+  console.log(`Successfully deployed ${await pool.name()} to ${pool.address}! 🎉\n`);
+
+  /**
+   * Balancer pools are deployed in an uninitialized state.
+   * Before anyone can trade with them, we need to add some initial liquidity.
+   * This gives the pool some tokens to give to traders and sets the initial prices.
+   */
+
+  const userData = WeightedPoolEncoder.joinInit([BPTAmount, BPTAmount]);
+
+  const joinRequest = {
+    assets: poolTokens,
+    maxAmountsIn: poolTokens.map(() => MaxUint256),
+    userData,
+    fromInternalBalance: false,
+  };
+
+  await txConfirmation(vault.connect(trader).joinPool(poolId, trader.address, trader.address, joinRequest));
+
+  /**
+   * Let's just do a quick check to see what's happened.
+   * We can check the pool's balances on the vault to look at the tokens we've added and also see how much BPT we received in return
+   */
+
+  const { balances } = await vault.getPoolTokens(poolId);
+  console.log(`The pool now holds:`);
+  poolTokens.forEach((token, i) => {
+    console.log(`  ${token}: ${formatFixed(balances[i], 18)}`);
+  });
+  console.log('\n');
+
+  const bpt = await pool.balanceOf(trader.address);
+  console.log(`I received ${formatFixed(bpt, 18)} ${symbol} (BPT) in return`);
 
   console.log('\n');
 }
 
-async function joinPool(pool: WeightedPool, transferTokens: boolean) {
-  const poolId = await pool.getPoolId();
-
-  const { tokens } = await Vault__factory.connect(await pool.getVault(), pool.provider).getPoolTokens(poolId);
-
-  const userData = WeightedPoolEncoder.joinTokenInForExactBPTOut(BPTAmount, 0);
-
-  const joinRequest = {
-    assets: tokens,
-    maxAmountsIn: tokens.map(() => MaxUint256),
-    userData,
-    fromInternalBalance: !transferTokens,
-  };
-
-  const receipt = await txConfirmation(
-    vault.connect(trader).joinPool(poolId, trader.address, trader.address, joinRequest)
-  );
-  console.log(`${printGas(receipt.gasUsed)} gas`);
-
-  const bpt: BigNumber = await pool.balanceOf(trader.address);
-
-  // check token balances
-  assert(bpt.eq(BPTAmount), 'Did not actually join pool');
-}
-
 async function deployWeightedPoolFactory(vault: Vault, deployer: SignerWithAddress): Promise<WeightedPoolFactory> {
-  // TODO: Import factory artifact from monorepo
-  const { abi, bytecode } = {};
+  const { abi, bytecode } = await getBalancerContractArtifact('20210418-weighted-pool', 'WeightedPoolFactory');
 
   const factory = new ethers.ContractFactory(abi, bytecode, deployer);
-  const instance = await factory.deploy([vault.address]);
+  const instance = await factory.deploy(vault.address);
   return WeightedPoolFactory__factory.connect(instance.address, deployer);
 }
 

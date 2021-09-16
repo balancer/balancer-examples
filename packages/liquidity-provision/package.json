@@ -54,7 +54,7 @@
     "typescript": "^4.0.2"
   },
   "dependencies": {
-    "@balancer-labs/v2-deployments": "^2.1.3",
+    "@balancer-labs/v2-deployments": "^2.2.0",
     "@balancer-labs/v2-pool-utils": "^2.0.1",
     "@balancer-labs/v2-pool-weighted": "^2.0.1",
     "@balancer-labs/v2-solidity-utils": "^2.0.0",

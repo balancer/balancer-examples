@@ -7,6 +7,8 @@ import { Dictionary, fromPairs } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import TestTokenArtifact from './artifacts/contracts/TestToken.sol/TestToken.json';
 import TestWETHArtifact from './artifacts/contracts/TestWETH.sol/TestWETH.json';
+import { getBalancerContractAbi, getBalancerContractBytecode } from '@balancer-labs/v2-deployments';
+import { JsonFragment } from '@ethersproject/abi';
 
 export type TokenList = Dictionary<Contract>;
 
@@ -26,13 +28,29 @@ export async function txConfirmation(tx: ContractTransaction | Promise<ContractT
   return (await tx).wait();
 }
 
-export async function deployVault(admin: string): Promise<Vault> {
-  const weth = await deployWETH();
-  // TODO: pull thse artifacts from v2-deployments
-  const authorizer = await deploy('v2-vault/Authorizer', { args: [admin] });
-  const vault: Vault = (await deploy('v2-vault/Vault', { args: [authorizer.address, weth.address, 0, 0] })) as Vault;
+export const getBalancerContractArtifact = async (
+  task: string,
+  contract: string
+): Promise<{ bytecode: string; abi: JsonFragment[] }> => {
+  const abi = getBalancerContractAbi(task, contract) as Promise<JsonFragment[]>;
+  const bytecode = getBalancerContractBytecode(task, contract);
 
-  return vault;
+  return { abi: await abi, bytecode: await bytecode };
+};
+
+export async function deployVault(admin: string): Promise<Vault> {
+  const [deployer] = await ethers.getSigners();
+  const weth = await deployWETH(deployer);
+
+  const authorizerArtifact = await getBalancerContractArtifact('20210418-authorizer', 'Authorizer');
+  const authorizerFactory = new ethers.ContractFactory(authorizerArtifact.abi, authorizerArtifact.bytecode, deployer);
+  const authorizer = await authorizerFactory.deploy(admin);
+
+  const vaultArtifact = await getBalancerContractArtifact('20210418-vault', 'Vault');
+  const vaultFactory = new ethers.ContractFactory(vaultArtifact.abi, vaultArtifact.bytecode, deployer);
+  const vault = await vaultFactory.deploy(authorizer.address, weth.address, 0, 0);
+
+  return vault as Vault;
 }
 
 export async function setupEnvironment(): Promise<{
@@ -79,7 +97,7 @@ export async function deployWETH(from?: SignerWithAddress): Promise<Contract> {
   const [defaultDeployer] = await ethers.getSigners();
   const deployer = from || defaultDeployer;
   const factory = new ethers.ContractFactory(TestWETHArtifact.abi, TestWETHArtifact.bytecode, deployer);
-  const instance = await factory.deploy([deployer.address]);
+  const instance = await factory.deploy(deployer.address);
   return instance;
 }
 
@@ -87,7 +105,7 @@ export async function deployToken(symbol: string, decimals?: number, from?: Sign
   const [defaultDeployer] = await ethers.getSigners();
   const deployer = from || defaultDeployer;
   const factory = new ethers.ContractFactory(TestTokenArtifact.abi, TestTokenArtifact.bytecode, deployer);
-  const instance = await factory.deploy([deployer.address, symbol, symbol, decimals]);
+  const instance = await factory.deploy(deployer.address, symbol, symbol, decimals);
   return instance;
 }
 

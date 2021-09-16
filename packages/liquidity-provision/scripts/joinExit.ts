@@ -18,7 +18,7 @@ import {
   WeightedPool__factory,
 } from '@balancer-labs/typechain';
 
-import { WeightedPoolEncoder, toNormalizedWeights } from '@balancer-examples/balancer-js';
+import { WeightedPoolEncoder, toNormalizedWeights } from '@balancer-labs/balancer-js';
 
 // setup environment
 const tokenAmount = parseFixed('100', 18);

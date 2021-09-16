@@ -70,7 +70,7 @@ async function main() {
    * This gives the pool some tokens to give to traders and sets the initial prices.
    */
 
-  const userData = WeightedPoolEncoder.joinInit([BPTAmount, BPTAmount]);
+  let userData = WeightedPoolEncoder.joinInit([BPTAmount, BPTAmount]);
 
   const joinRequest = {
     assets: poolTokens,
@@ -86,17 +86,48 @@ async function main() {
    * We can check the pool's balances on the vault to look at the tokens we've added and also see how much BPT we received in return
    */
 
-  const { balances } = await vault.getPoolTokens(poolId);
+  let { balances } = await vault.getPoolTokens(poolId);
   console.log(`The pool now holds:`);
   poolTokens.forEach((token, i) => {
     console.log(`  ${token}: ${formatFixed(balances[i], 18)}`);
   });
   console.log('\n');
 
-  const bpt = await pool.balanceOf(trader.address);
+  let bpt = await pool.balanceOf(trader.address);
   console.log(`I received ${formatFixed(bpt, 18)} ${symbol} (BPT) in return`);
 
   console.log('\n');
+
+  /*
+  * We can now burn the BPT to exit the pool, recovering the initial investment. Note that the totalSupply will not be exactly zero:
+  * pools always mint a "minimum BPT" value to the zero address so that pools cannot be completely drained. (This helps keep the 
+  * weighted math well behaved, and avoids the gas cost of enforcing minimum balances.)
+  *
+  */
+
+  userData = WeightedPoolEncoder.exitExactBPTInForTokensOut(bpt);
+
+  const exitRequest = {
+    assets: poolTokens,
+    minAmountsOut: poolTokens.map(() => 0),
+    userData,
+    toInternalBalance: false,
+  };
+
+  await txConfirmation(vault.connect(trader).exitPool(poolId, trader.address, trader.address, exitRequest));
+
+  bpt = await pool.balanceOf(trader.address);
+  console.log(`I have ${formatFixed(bpt, 18)} ${symbol} (BPT) left after exiting`);
+  
+  const tokenResult = await vault.getPoolTokens(poolId);
+  console.log(`The pool now holds:`);
+  poolTokens.forEach((token, i) => {
+    console.log(`  ${token}: ${formatFixed(tokenResult.balances[i], 18)}`);
+  });
+  console.log('\n');
+
+  const totalSupply = await pool.totalSupply();
+  console.log(`The pool total supply is now: ${formatFixed(totalSupply, 18)}`);
 }
 
 async function deployWeightedPoolFactory(vault: Vault, deployer: SignerWithAddress): Promise<WeightedPoolFactory> {

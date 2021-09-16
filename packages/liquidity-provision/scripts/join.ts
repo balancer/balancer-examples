@@ -39,7 +39,7 @@ async function main() {
    * Balancer Pools are deployed from factories so let's deploy a factory for Weighted Pools.
    */
   const weightedPoolFactory = await deployWeightedPoolFactory(vault, trader);
-  console.log(`Successfully deployed ${await pool.name()} to ${pool.address}! 🎉\n`);
+  console.log(`Successfully deployed WeightedPoolFactory! 🎉\n`);
 
   /**
    * Now we can deploy our WeightedPool from the factory contract

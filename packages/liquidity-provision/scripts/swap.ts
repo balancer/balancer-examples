@@ -26,7 +26,7 @@ import {
   FundManagement,
   SingleSwap,
   BatchSwapStep,
-} from '@balancer-examples/balancer-js';
+} from '@balancer-labs/balancer-js';
 import { expect } from 'chai';
 
 // setup environment

@@ -30,8 +30,9 @@ contract LiquidityProvider {
     /**
      * @dev This helper function is a fast and cheap way to convert between IERC20[] and IAsset[] types
      */
-    function _convertERC20sToAssets(IERC20[] memory tokens) internal pure returns (IAsset[] memory assets){
-        assembly{
+    function _convertERC20sToAssets(IERC20[] memory tokens) internal pure returns (IAsset[] memory assets) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
             assets := tokens
         }
     }
@@ -42,13 +43,13 @@ contract LiquidityProvider {
     function initializePool(bytes32 poolId) public {
         // Some pools can change which tokens they hold so we need to tell the Vault what we expect to be adding.
         // This prevents us from thinking we're adding 100 DAI but end up adding 100 BTC!
-        (IERC20[] memory tokens,,) = _vault.getPoolTokens(poolId);
+        (IERC20[] memory tokens, , ) = _vault.getPoolTokens(poolId);
         IAsset[] memory assets = _convertERC20sToAssets(tokens);
 
         // These are the slippage limits preventing us from adding more tokens than we expected.
         // If the pool trys to take more tokens than we've allowed it to then the transaction will revert.
         uint256[] memory maxAmountsIn = new uint256[](tokens.length);
-        for (uint256 i; i < tokens.length; i++){
+        for (uint256 i; i < tokens.length; i++) {
             maxAmountsIn[i] = type(uint256).max;
         }
 
@@ -63,7 +64,7 @@ contract LiquidityProvider {
 
         // We need to create a JoinPoolRequest to tell the pool how we we want to add liquidity
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
-            assets: assets, 
+            assets: assets,
             maxAmountsIn: maxAmountsIn,
             userData: userData,
             fromInternalBalance: fromInternalBalance
@@ -78,16 +79,15 @@ contract LiquidityProvider {
         _vault.joinPool(poolId, sender, recipient, request);
     }
 
-
     /**
      * This function demonstrates how to add liquidity to an already initialized pool
-     * It's very similar to the initializePool except we provide different userData 
+     * It's very similar to the initializePool except we provide different userData
      */
     function joinPool(bytes32 poolId) public {
-        (IERC20[] memory tokens,,) = _vault.getPoolTokens(poolId);
+        (IERC20[] memory tokens, , ) = _vault.getPoolTokens(poolId);
 
         uint256[] memory maxAmountsIn = new uint256[](tokens.length);
-        for (uint256 i; i < tokens.length; i++){
+        for (uint256 i; i < tokens.length; i++) {
             maxAmountsIn[i] = type(uint256).max;
         }
 
@@ -110,7 +110,7 @@ contract LiquidityProvider {
      * This function demonstrates how to remove liquidity from a pool
      */
     function exitPool(bytes32 poolId) public {
-        (IERC20[] memory tokens,,) = _vault.getPoolTokens(poolId);
+        (IERC20[] memory tokens, , ) = _vault.getPoolTokens(poolId);
 
         // Here we're giving the minimum amounts of each token we'll accept as an output
         // For simplicity we're setting this to all zeros
@@ -119,7 +119,7 @@ contract LiquidityProvider {
         // We can ask the Vault to keep the tokens we receive in our internal balance to save gas
         bool toInternalBalance = false;
 
-        // As we're exiting the pool we need to make an ExitPoolRequest instead 
+        // As we're exiting the pool we need to make an ExitPoolRequest instead
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
             assets: _convertERC20sToAssets(tokens),
             minAmountsOut: minAmountsOut,

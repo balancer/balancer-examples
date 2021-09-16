@@ -10,6 +10,7 @@ import {
   setupEnvironment,
   txConfirmation,
   getBalancerContractArtifact,
+  printGas,
 } from '@balancer-examples/shared-dependencies';
 import {
   Vault,
@@ -18,7 +19,15 @@ import {
   WeightedPool__factory,
 } from '@balancer-labs/typechain';
 
-import { WeightedPoolEncoder, toNormalizedWeights } from '@balancer-examples/balancer-js';
+import {
+  WeightedPoolEncoder,
+  toNormalizedWeights,
+  SwapKind,
+  FundManagement,
+  SingleSwap,
+  BatchSwapStep,
+} from '@balancer-examples/balancer-js';
+import { expect } from 'chai';
 
 // setup environment
 const tokenAmount = parseFixed('100', 18);
@@ -46,7 +55,7 @@ async function main() {
    */
   const name = 'My New Balancer Pool';
   const symbol = 'POOL';
-  const poolTokens = pickTokenAddresses(tokens, 2);
+  const poolTokens = pickTokenAddresses(tokens, 4);
   const normalizedWeights = toNormalizedWeights(poolTokens.map(() => One));
   const swapFeePercentage = parseFixed('1', 12);
   const delegateOwner = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
@@ -69,7 +78,7 @@ async function main() {
    * This gives the pool some tokens to give to traders and sets the initial prices.
    */
 
-  let userData = WeightedPoolEncoder.joinInit(poolTokens.map(() => tokenAmount));
+  const userData = WeightedPoolEncoder.joinInit(poolTokens.map(() => tokenAmount));
 
   const joinRequest = {
     assets: poolTokens,
@@ -80,53 +89,92 @@ async function main() {
 
   await txConfirmation(vault.connect(trader).joinPool(poolId, trader.address, trader.address, joinRequest));
 
-  /**
-   * Let's just do a quick check to see what's happened.
-   * We can check the pool's balances on the vault to look at the tokens we've added and also see how much BPT we received in return
-   */
+  // Single swap
+  const amount = parseFixed('5', 18);
+  const singleSwap: SingleSwap = {
+    poolId,
+    kind: SwapKind.GivenIn,
+    assetIn: poolTokens[0],
+    assetOut: poolTokens[2],
+    amount,
+    userData: '0x',
+  };
+
+  const funds: FundManagement = {
+    sender: trader.address,
+    fromInternalBalance: false,
+    recipient: trader.address,
+    toInternalBalance: false,
+  };
+
+  const limit = 0;
+  const deadline = MaxUint256;
 
   const { balances } = await vault.getPoolTokens(poolId);
-  console.log(`The pool now holds:`);
+
+  console.log(`Before the swap, the pool holds:`);
   poolTokens.forEach((token, i) => {
     console.log(`  ${token}: ${formatFixed(balances[i], 18)}`);
   });
   console.log('\n');
 
-  let bpt = await pool.balanceOf(trader.address);
-  console.log(`I received ${formatFixed(bpt, 18)} ${symbol} (BPT) in return`);
+  // We are doing a swap given in, so the balance of token 0 will go up by amount,
+  // and the balance of token 2 will go down (by amount - swap fee)
 
-  console.log('\n');
+  let tx = await txConfirmation(vault.connect(trader).swap(singleSwap, funds, limit, deadline));
+  console.log(`${printGas(tx.gasUsed)} (single swap)\n`);
 
-  /*
-   * We can now burn the BPT to exit the pool, recovering the initial investment. Note that the totalSupply will not be exactly zero:
-   * pools always mint a "minimum BPT" value to the zero address so that pools cannot be completely drained. (This helps keep the
-   * weighted math well behaved, and avoids the gas cost of enforcing minimum balances.)
-   *
-   */
+  // Get balances after swap
+  const afterSwap = await vault.getPoolTokens(poolId);
 
-  userData = WeightedPoolEncoder.exitExactBPTInForTokensOut(bpt);
-
-  const exitRequest = {
-    assets: poolTokens,
-    minAmountsOut: poolTokens.map(() => 0),
-    userData,
-    toInternalBalance: false,
-  };
-
-  await txConfirmation(vault.connect(trader).exitPool(poolId, trader.address, trader.address, exitRequest));
-
-  bpt = await pool.balanceOf(trader.address);
-  console.log(`I have ${formatFixed(bpt, 18)} ${symbol} (BPT) left after exiting`);
-
-  const tokenResult = await vault.getPoolTokens(poolId);
-  console.log(`The pool now holds:`);
+  console.log(`After the swap, the pool holds:`);
   poolTokens.forEach((token, i) => {
-    console.log(`  ${token}: ${formatFixed(tokenResult.balances[i], 18)}`);
+    console.log(`  ${token}: ${formatFixed(afterSwap.balances[i], 18)}`);
   });
   console.log('\n');
 
-  const totalSupply = await pool.totalSupply();
-  console.log(`The pool total supply is now: ${formatFixed(totalSupply, 18)}`);
+  expect(afterSwap.balances[0]).to.equal(balances[0].add(amount));
+  expect(afterSwap.balances[1]).to.eq(balances[1]);
+  expect(afterSwap.balances[2]).to.gt(balances[2].sub(amount));
+
+  // Now do a batch swap (would normally be across multiple pools)
+
+  const step1: BatchSwapStep = {
+    poolId,
+    assetInIndex: 0,
+    assetOutIndex: 1,
+    amount,
+    userData: '0x',
+  };
+
+  const step2: BatchSwapStep = {
+    poolId,
+    assetInIndex: 1,
+    assetOutIndex: 3,
+    amount: 0,
+    userData: '0x',
+  };
+
+  const swaps = [step1, step2];
+  const limits = poolTokens.map(() => parseFixed('1000', 18));
+
+  tx = await txConfirmation(
+    vault.connect(trader).batchSwap(SwapKind.GivenIn, swaps, poolTokens, funds, limits, deadline)
+  );
+  console.log(`${printGas(tx.gasUsed)} (batch swap)\n`);
+
+  const afterBatchSwap = await vault.getPoolTokens(poolId);
+
+  console.log(`After the batch swap, the pool holds:`);
+  poolTokens.forEach((token, i) => {
+    console.log(`  ${token}: ${formatFixed(afterBatchSwap.balances[i], 18)}`);
+  });
+  console.log('\n');
+
+  expect(afterBatchSwap.balances[0]).to.equal(balances[0].add(amount.mul(2)));
+  expect(afterBatchSwap.balances[1]).to.eq(balances[1]);
+  expect(afterBatchSwap.balances[2]).to.gt(balances[2].sub(amount));
+  expect(afterBatchSwap.balances[3]).to.gt(balances[3].sub(amount));
 }
 
 async function deployWeightedPoolFactory(vault: Vault, deployer: SignerWithAddress): Promise<WeightedPoolFactory> {

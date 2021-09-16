@@ -1,5 +1,5 @@
 {
-  "name": "@balancer-examples/custom-pool",
+  "name": "@balancer-examples/shared-dependencies",
   "private": true,
   "description": "Example custom pool type",
   "license": "GPL-3.0-only",
@@ -28,9 +28,11 @@
     "test:watch": "nodemon --ext js,ts --watch test --watch lib --exec 'clear && yarn test --no-compile'"
   },
   "devDependencies": {
+    "@balancer-labs/typechain": "^1.0.0",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
     "@types/chai": "^4.2.12",
+    "@types/lodash": "^4.14.172",
     "@types/mocha": "^8.0.3",
     "@types/node": "^14.6.0",
     "@typescript-eslint/eslint-plugin": "^4.1.1",
@@ -40,8 +42,9 @@
     "eslint-plugin-mocha-no-only": "^1.1.1",
     "eslint-plugin-prettier": "^4.0.0",
     "ethereum-waffle": "^3.0.2",
-    "ethers": "^5.4.1",
+    "ethers": "^5.4.6",
     "hardhat": "^2.4.1",
+    "lodash": "^4.17.21",
     "mocha": "^8.2.1",
     "nodemon": "^2.0.4",
     "prettier": "^2.4.0",
@@ -52,8 +55,14 @@
     "typescript": "^4.0.2"
   },
   "dependencies": {
+    "@balancer-labs/v2-deployments": "^2.2.0",
     "@balancer-labs/v2-pool-utils": "^2.0.1",
+    "@balancer-labs/v2-pool-weighted": "^2.0.1",
     "@balancer-labs/v2-solidity-utils": "^2.0.0",
-    "@balancer-labs/v2-vault": "^2.0.0"
+    "@balancer-labs/v2-vault": "^2.0.0",
+    "@ethersproject/bignumber": "^5.4.1",
+    "@ethersproject/constants": "^5.4.0",
+    "@ethersproject/contracts": "^5.4.1",
+    "@ethersproject/providers": "^5.4.5"
   }
 }

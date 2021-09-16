@@ -12,11 +12,12 @@
     "node": ">=12.10"
   },
   "scripts": {
-    "build": "yarn workspaces foreach --parallel --verbose  run build",
+    "build": "yarn workspaces foreach --parallel --verbose run build",
     "lint": "yarn workspaces foreach --parallel --verbose run lint",
     "test": "yarn workspaces foreach --parallel --verbose run test"
   },
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "packageManager": "yarn@3.0.2"
 }

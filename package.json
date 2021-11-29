@@ -17,7 +17,8 @@
     "test": "yarn workspaces foreach --parallel --verbose run test"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "pvt/*"
   ],
   "packageManager": "yarn@3.0.2"
 }

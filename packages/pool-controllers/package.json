@@ -30,7 +30,6 @@
   "devDependencies": {
     "@balancer-examples/shared-dependencies": "workspace:*",
     "@balancer-labs/typechain": "^1.0.0",
-    "@balancer-labs/v2-helpers": "workspace:*",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
     "@types/chai": "^4.2.12",
@@ -58,6 +57,10 @@
     "@balancer-labs/v2-pool-utils": "^2.0.1",
     "@balancer-labs/v2-pool-weighted": "^2.0.1",
     "@balancer-labs/v2-solidity-utils": "^2.0.0",
-    "@balancer-labs/v2-vault": "^2.0.0"
+    "@balancer-labs/v2-vault": "^2.0.0",
+    "@ethersproject/bignumber": "^5.4.1",
+    "@ethersproject/constants": "^5.4.0",
+    "@ethersproject/contracts": "^5.4.1",
+    "@ethersproject/providers": "^5.4.5"
   }
 }

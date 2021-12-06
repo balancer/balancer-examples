@@ -79,11 +79,14 @@ __metadata:
   dependencies:
     "@balancer-examples/shared-dependencies": "workspace:*"
     "@balancer-labs/typechain": ^1.0.0
-    "@balancer-labs/v2-helpers": "workspace:*"
     "@balancer-labs/v2-pool-utils": ^2.0.1
     "@balancer-labs/v2-pool-weighted": ^2.0.1
     "@balancer-labs/v2-solidity-utils": ^2.0.0
     "@balancer-labs/v2-vault": ^2.0.0
+    "@ethersproject/bignumber": ^5.4.1
+    "@ethersproject/constants": ^5.4.0
+    "@ethersproject/contracts": ^5.4.1
+    "@ethersproject/providers": ^5.4.5
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -243,27 +246,6 @@ __metadata:
   checksum: 25b46a8c6b9375d120a75b656ec8c2d4d4409f6a7617a3c22f149572239eb68f60e39d186fe905d5cf825b0201de0fe8e6f1a0caf48e501b54d34b1a09a4530a
   languageName: node
   linkType: hard
-
-"@balancer-labs/v2-helpers@workspace:*, @balancer-labs/v2-helpers@workspace:pvt/helpers":
-  version: 0.0.0-use.local
-  resolution: "@balancer-labs/v2-helpers@workspace:pvt/helpers"
-  dependencies:
-    "@nomiclabs/hardhat-ethers": ^2.0.1
-    "@types/lodash": ^4.14.161
-    "@types/node": ^14.6.0
-    "@typescript-eslint/eslint-plugin": ^4.1.1
-    "@typescript-eslint/parser": ^4.1.1
-    decimal.js: ^10.2.1
-    eslint: ^7.9.0
-    eslint-plugin-prettier: ^3.1.4
-    ethers: ^5.4.1
-    hardhat: ^2.4.1
-    lodash.frompairs: ^4.0.1
-    prettier: ^2.1.2
-    ts-node: ^8.10.2
-    typescript: ^4.0.2
-  languageName: unknown
-  linkType: soft
 
 "@balancer-labs/v2-pool-utils@npm:2.0.1, @balancer-labs/v2-pool-utils@npm:^2.0.1":
   version: 2.0.1
@@ -1372,13 +1354,6 @@ __metadata:
     "@types/level-errors": "*"
     "@types/node": "*"
   checksum: 04969bb805035960b8d6650e8f76893be7ba70267bb7012f6f00d67a0cf096ada552355629791b3f5925e9cdb6912d3fe08892c33c3c583e8fd02099b573bdd7
-  languageName: node
-  linkType: hard
-
-"@types/lodash@npm:^4.14.161":
-  version: 4.14.177
-  resolution: "@types/lodash@npm:4.14.177"
-  checksum: 00f9eb300ed5219cfbabb3448d4a71744895edad60dcfda9f028c0808a50eb6ad1ca9f673b56a85f85668a4ea54b9870643625468a747039c435643e52253a75
   languageName: node
   linkType: hard
 
@@ -4057,13 +4032,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"decimal.js@npm:^10.2.1":
-  version: 10.3.1
-  resolution: "decimal.js@npm:10.3.1"
-  checksum: 0351ac9f05fe050f23227aa6a4573bee2d58fa7378fcf28d969a8c789525032effb488a90320fd3fe86a66e17b4bc507d811b15eada5b7f0e7ec5d2af4c24a59
-  languageName: node
-  linkType: hard
-
 "decode-uri-component@npm:^0.2.0":
   version: 0.2.0
   resolution: "decode-uri-component@npm:0.2.0"
@@ -4592,21 +4560,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-prettier@npm:^3.1.4":
-  version: 3.4.1
-  resolution: "eslint-plugin-prettier@npm:3.4.1"
-  dependencies:
-    prettier-linter-helpers: ^1.0.0
-  peerDependencies:
-    eslint: ">=5.0.0"
-    prettier: ">=1.13.0"
-  peerDependenciesMeta:
-    eslint-config-prettier:
-      optional: true
-  checksum: fa6a89f0d7cba1cc87064352f5a4a68dc3739448dd279bec2bced1bfa3b704467e603d13b69dcec853f8fa30b286b8b715912898e9da776e1b016cf0ee48bd99
-  languageName: node
-  linkType: hard
-
 "eslint-plugin-prettier@npm:^4.0.0":
   version: 4.0.0
   resolution: "eslint-plugin-prettier@npm:4.0.0"
@@ -4731,7 +4684,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:^7.32.0, eslint@npm:^7.9.0":
+"eslint@npm:^7.32.0":
   version: 7.32.0
   resolution: "eslint@npm:7.32.0"
   dependencies:
@@ -8026,13 +7979,6 @@ fsevents@~2.1.1:
   version: 4.5.0
   resolution: "lodash.clonedeep@npm:4.5.0"
   checksum: 92c46f094b064e876a23c97f57f81fbffd5d760bf2d8a1c61d85db6d1e488c66b0384c943abee4f6af7debf5ad4e4282e74ff83177c9e63d8ff081a4837c3489
-  languageName: node
-  linkType: hard
-
-"lodash.frompairs@npm:^4.0.1":
-  version: 4.0.1
-  resolution: "lodash.frompairs@npm:4.0.1"
-  checksum: 8ff2d857f0764325dba5825ef8776cfc6992a504d75d668889bdd617c62fc3f179f1590042e127c98ed14d3fb14b71e66697b0fe8b10f73879c3a46e2d1c23d3
   languageName: node
   linkType: hard
 

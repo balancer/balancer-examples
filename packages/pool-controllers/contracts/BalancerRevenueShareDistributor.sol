@@ -45,6 +45,7 @@ contract BalancerRevenueShareDistributor {
     event RevenueSharesDistributed(address indexed recipient, IERC20 indexed token, uint256 amount);
 
     constructor(
+        address balancerAddress,
         address partnerAddress,
         uint256 partnerSharePct,
         string memory name
@@ -52,7 +53,11 @@ contract BalancerRevenueShareDistributor {
         require(partnerSharePct >= 0 && partnerSharePct <= FixedPoint.ONE, "Invalid revenue share");
 
         // Cannot read from immutable balancerFeeRecipient here, so must store this for the event
-        address feeRecipient = address(IVault(VAULT).getProtocolFeesCollector());
+        // Allow passing in an address for the Balancer portion (e.g., the treasury multi-sig)
+        // Pass in the zero address to default to the Vault's protocol fee collector
+        address feeRecipient = balancerAddress == address(0)
+            ? address(IVault(VAULT).getProtocolFeesCollector())
+            : balancerAddress;
 
         protocolFeeRecipient = feeRecipient;
         partnerFeeRecipient = partnerAddress;

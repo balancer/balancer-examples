@@ -1,34 +1,46 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { BigNumber } from '@ethersproject/bignumber';
-import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { Contract } from 'ethers';
-//import { deploySortedTokens, TokenList } from '@balancer-examples/shared-dependencies';
+import { BigNumber, formatFixed, parseFixed } from '@ethersproject/bignumber';
+import { Contract } from '@ethersproject/contracts';
+import { deploySortedTokens, TokenList } from '@balancer-examples/shared-dependencies';
+import { Vault } from '@balancer-labs/typechain';
+import BalancerRevenueShareDistributorArtifact from '../artifacts/contracts/BalancerRevenueShareDistributor.sol/BalancerRevenueShareDistributor.json';
 
 describe('Balancer revenue share distributor', () => {
-  let protocolFeeCollector: SignerWithAddress, copperFeeCollector: SignerWithAddress;
+  let daoTreasury: SignerWithAddress, copperFeeCollector: SignerWithAddress;
   let revenueSplitPct: BigNumber;
   let distributor: Contract;
   const NAME = 'Copper';
-  /*let tokens: TokenList;
+  let tokens: TokenList;
+  let vault: Vault;
 
   async function deployTokens() {
     tokens = await deploySortedTokens(['DAI', 'USDC', 'WBTC', 'NEO'], [18, 6, 8, 0]);
-  }*/
+  }
+
+  async function deployDistributor(params: unknown[], from?: SignerWithAddress): Promise<Contract> {
+    const [defaultDeployer] = await ethers.getSigners();
+    const deployer = from || defaultDeployer;
+    const factory = new ethers.ContractFactory(BalancerRevenueShareDistributorArtifact.abi, BalancerRevenueShareDistributorArtifact.bytecode, deployer);
+    const instance = await factory.deploy(deployer.address, ...params);
+    return instance;
+  }
 
   before('setup', async () => {
-    [, protocolFeeCollector, copperFeeCollector] = await ethers.getSigners();
+    [, daoTreasury, copperFeeCollector] = await ethers.getSigners();
   });
 
   context('with 50/50 split', () => {
     beforeEach('deploy distributor', async () => {
-      revenueSplitPct = bn(0.5e18);
+      revenueSplitPct = parseFixed('0.5', 18);
 
-      distributor = await deploy('TestRevenueShareDistributor', {
-        args: [protocolFeeCollector.address, copperFeeCollector.address, revenueSplitPct, NAME],
-      });
+      distributor = await deployDistributor([
+        daoTreasury.address,
+        copperFeeCollector.address,
+        revenueSplitPct,
+        NAME,
+      ]);
     });
 
     it('deploys test distributor with 50/50 split', async () => {
@@ -40,17 +52,20 @@ describe('Balancer revenue share distributor', () => {
       expect(copperAddress).to.equal(copperFeeCollector.address);
       expect(feePct).to.equal(revenueSplitPct);
       expect(name).to.equal(NAME);
-      expect(balancerAddress).to.equal(protocolFeeCollector.address);
+      expect(balancerAddress).to.equal(daoTreasury.address);
     });
   });
 
   context('with 100/0 split', () => {
     beforeEach('deploy distributor', async () => {
-      revenueSplitPct = bn(1e18);
+      revenueSplitPct = parseFixed('1', 18);
 
-      distributor = await deploy('TestRevenueShareDistributor', {
-        args: [protocolFeeCollector.address, copperFeeCollector.address, revenueSplitPct, NAME],
-      });
+      distributor = await deployDistributor([
+        daoTreasury.address,
+        copperFeeCollector.address,
+        revenueSplitPct,
+        NAME,
+      ]);
     });
 
     it('deploys test distributor with 100% to partner', async () => {
@@ -62,11 +77,14 @@ describe('Balancer revenue share distributor', () => {
 
   context('with 0/100 split', () => {
     beforeEach('deploy distributor', async () => {
-      revenueSplitPct = bn(0);
+      revenueSplitPct = parseFixed('0', 18);
 
-      distributor = await deploy('TestRevenueShareDistributor', {
-        args: [protocolFeeCollector.address, copperFeeCollector.address, revenueSplitPct, NAME],
-      });
+      distributor = await deployDistributor([
+        daoTreasury.address,
+        copperFeeCollector.address,
+        revenueSplitPct,
+        NAME,
+      ]);
     });
 
     it('deploys test distributor with 100% to Balancer', async () => {
@@ -78,14 +96,17 @@ describe('Balancer revenue share distributor', () => {
 
   context('with invalid split', () => {
     beforeEach('deploy distributor', async () => {
-      revenueSplitPct = bn(1.01e18);
+      revenueSplitPct = parseFixed('1.01', 18);
     });
 
     it('reverts if the fee is invalid', async () => {
       await expect(
-        deploy('TestRevenueShareDistributor', {
-          args: [protocolFeeCollector.address, copperFeeCollector.address, revenueSplitPct, NAME],
-        })
+        deployDistributor([
+          daoTreasury.address,
+          copperFeeCollector.address,
+          revenueSplitPct,
+          NAME,
+        ])
       ).to.be.revertedWith('Invalid revenue share');
     });
   });

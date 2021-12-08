@@ -41,9 +41,6 @@ contract CopperLBPLauncher {
         uint256 fundTokenSeedAmount;
     }
 
-    // Joins and exits are done through calls on the Balancer Vault
-    address payable public constant VAULT = payable(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-
     // Ensure all LBPs are at least this length
     uint256 public constant MINIMUM_LBP_DURATION = 1 days;
 
@@ -55,6 +52,9 @@ contract CopperLBPLauncher {
 
     // Store the fee percentage, as a FixedPoint number. 30 bps = 3e15
     uint256 public immutable exitFeePercentage;
+
+    // Joins and exits are done through calls on the Balancer Vault
+    address payable public immutable vault;
 
     // All proceeds are send to this address (should be a contract). This address can be changed by the manager.
     address private _feeRecipient;
@@ -74,10 +74,12 @@ contract CopperLBPLauncher {
     TimelockController private _timelockController;
 
     constructor(
+        address payable balancerVault,
         uint256 feePercentage,
         address feeRecipient,
         address factoryAddress
     ) {
+        vault = balancerVault;
         exitFeePercentage = feePercentage;
         _feeRecipient = feeRecipient;
         lbpFactoryAddress = factoryAddress;
@@ -234,8 +236,8 @@ contract CopperLBPLauncher {
         fundToken.safeTransferFrom(poolConfig.owner, address(this), fundTokenAmount);
         projectToken.safeTransferFrom(poolConfig.owner, address(this), projectTokenAmount);
 
-        fundToken.approve(VAULT, fundTokenAmount);
-        projectToken.approve(VAULT, projectTokenAmount);
+        fundToken.approve(vault, fundTokenAmount);
+        projectToken.approve(vault, projectTokenAmount);
 
         // Fund the pool from this contract
 
@@ -246,7 +248,7 @@ contract CopperLBPLauncher {
             fromInternalBalance: false
         });
 
-        Vault(VAULT).joinPool(
+        Vault(vault).joinPool(
             LiquidityBootstrappingPool(pool).getPoolId(),
             address(this), // sender - source of initial deposit
             address(this), // recipient - destination of BPT
@@ -315,7 +317,7 @@ contract CopperLBPLauncher {
     ) external onlyPoolOwner(pool) {
         // 1. Get pool data
         bytes32 poolId = LiquidityBootstrappingPool(pool).getPoolId();
-        (IERC20[] memory poolTokens, , ) = Vault(VAULT).getPoolTokens(poolId);
+        (IERC20[] memory poolTokens, , ) = Vault(vault).getPoolTokens(poolId);
         require(poolTokens.length == minAmountsOut.length, "invalid input length");
         PoolData memory poolData = _poolData[pool];
 
@@ -332,7 +334,7 @@ contract CopperLBPLauncher {
         });
 
         // 3. Exit pool and keep tokens in this contract
-        Vault(VAULT).exitPool(poolId, address(this), payable(address(this)), exitRequest);
+        Vault(vault).exitPool(poolId, address(this), payable(address(this)), exitRequest);
 
         // 4. Calculate and transfer fee to recipient
         _payExitFee(pool, poolTokens, poolData);

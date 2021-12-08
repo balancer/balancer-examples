@@ -1,15 +1,14 @@
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { BigNumber } from '@ethersproject/bignumber';
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { DAY, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { Contract } from 'ethers';
+import { BigNumber, FixedFormat, formatFixed, parseFixed } from '@ethersproject/bignumber';
+import { Contract } from '@ethersproject/contracts';
 import { deploySortedTokens, TokenList } from '@balancer-examples/shared-dependencies';
-import { Vault } from '@balancer-labs/typechain';
-import { deployVault, txConfirmation } from '@balancer-examples/shared-dependencies/index';
+import { Vault, LiquidityBootstrappingPoolFactory, LiquidityBootstrappingPoolFactory__factory } from '@balancer-labs/typechain';
+import { deployVault, txConfirmation, getBalancerContractArtifact, mintTokens } from '@balancer-examples/shared-dependencies/index';
+import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import CopperLBPLauncherArtifact from '../artifacts/contracts/CopperLBPLauncher.sol/CopperLBPLauncher.json';
+import TimelockControllerArtifact from '../artifacts/contracts/TimelockController.sol/TimelockController.json';
 
 describe('Copper LBP Launcher', () => {
   let admin: SignerWithAddress,
@@ -26,21 +25,59 @@ describe('Copper LBP Launcher', () => {
   let vault: Vault;
   let tokens: TokenList;
 
+  const SECOND = 1;
+  const MINUTE = SECOND * 60;
+  const HOUR = MINUTE * 60;
+  const DAY = HOUR * 24;
+  
+  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
   before('setup', async () => {
-    [, admin, manager, feeRecipient, newManager, poolOwner, newPoolOwner, rando] = await ethers.getSigners();
+    [, admin, manager, feeRecipient, newFeeRecipient, newManager, poolOwner, newPoolOwner, rando] = await ethers.getSigners();
   });
+
+  function fp(value: number): BigNumber {
+    return parseFixed(value.toString(), 18);
+  }
+
+  async function currentTimestamp(): Promise<BigNumber> {
+    const { timestamp } = await network.provider.send('eth_getBlockByNumber', ['latest', true]);
+    return BigNumber.from(timestamp);
+  };
+
+  async function deployLBPFactory(vault: Vault, deployer: SignerWithAddress): Promise<LiquidityBootstrappingPoolFactory> {
+    const { abi, bytecode } = await getBalancerContractArtifact('20210721-liquidity-bootstrapping-pool', 'LiquidityBootstrappingPoolFactory');
+  
+    const factory = new ethers.ContractFactory(abi, bytecode, deployer);
+    const instance = await factory.deploy(vault.address);
+    return LiquidityBootstrappingPoolFactory__factory.connect(instance.address, deployer);
+  }
+
+  async function deployLauncher(params: any[], from?: SignerWithAddress): Promise<Contract> {
+    const [defaultDeployer] = await ethers.getSigners();
+    const deployer = from || defaultDeployer;
+    const factory = new ethers.ContractFactory(CopperLBPLauncherArtifact.abi, CopperLBPLauncherArtifact.bytecode, deployer);
+    const instance = await factory.deploy(...params);
+    return instance;
+  }
+
+  async function deployedAt(address: string, abi: any, signer: SignerWithAddress): Promise<Contract> {
+    return new ethers.Contract(address, abi, signer);
+  }
 
   beforeEach('deploy vault, factory, tokens, and launcher', async () => {
     vault = await deployVault(admin.address);
-    lbpFactory = await deploy('LiquidityBootstrappingFactory', { args: [vault.address] });
-    exitFeePercentage = bn(3e15);
+    lbpFactory = await deployLBPFactory(vault, admin);
+    exitFeePercentage = parseFixed('3', 15);
 
     tokens = await deploySortedTokens(['DAI', 'USDC', 'WBTC', 'NEO'], [18, 6, 8, 0]);
+    await mintTokens(tokens, 'DAI', poolOwner, fp(10000));
+    await mintTokens(tokens, 'WBTC', poolOwner, fp(100));
 
-    launcher = await deploy('CopperLBPLauncher', {
-      from: manager,
-      args: [exitFeePercentage, feeRecipient, lbpFactory],
-    });
+    launcher = await deployLauncher([vault.address, exitFeePercentage, feeRecipient.address, lbpFactory.address], manager);
+
+    await tokens.DAI.connect(poolOwner).approve(launcher.address, fp(10000));
+    await tokens.WBTC.connect(poolOwner).approve(launcher.address, fp(100));
   });
 
   context('initial deployment', () => {
@@ -52,7 +89,7 @@ describe('Copper LBP Launcher', () => {
       const timelock = await launcher.getTimelockController();
       const minDelay = await launcher.MIN_TIMELOCK_DELAY();
 
-      const timelockContract = await deployedAt('TimelockController', timelock);
+      const timelockContract = await deployedAt(timelock, TimelockControllerArtifact.abi, admin);
 
       expect(timelock).to.not.equal(ZERO_ADDRESS);
       expect(await timelockContract.getMinDelay()).to.equal(minDelay);
@@ -79,57 +116,63 @@ describe('Copper LBP Launcher', () => {
     });
   });
 
-  context('when ownership is transferred', () => {
-    it('reverts if non-manager transfers ownership', async () => {
-      await expect(launcher.connect(newManager).transferOwnership(newManager)).to.be.revertedWith(
-        'Caller is not manager'
-      );
+  describe('transfer ownership', () => {
+    context('when transfer is invalid', () => {
+      it('reverts if non-manager transfers ownership', async () => {
+        await expect(launcher.connect(newManager).transferOwnership(newManager.address)).to.be.revertedWith(
+          'Caller is not manager'
+        );
+      });
+  
+      it('claimOwnership reverts if called by non-candidate', async () => {
+        await expect(launcher.connect(rando).claimOwnership()).to.be.revertedWith('Sender not allowed');
+      });
     });
 
-    it('manager can initiate ownership transfer', async () => {
-      await launcher.connect(manager).transferOwnership(newManager);
+    context('when transfer is valid', () => {
+      beforeEach('initiate transfer', async () => {
+        await launcher.connect(manager).transferOwnership(newManager.address);
+      });
 
-      // 2-step process, so the old manager is still in charge
-      expect(await launcher.getManager()).to.equal(manager.address);
-    });
-
-    it('claimOwnership reverts if called by non-candidate', async () => {
-      await expect(launcher.connect(rando).claimOwnership()).to.be.revertedWith('Sender not allowed');
-    });
-
-    it('candidate can claimOwnership', async () => {
-      await launcher.connect(newManager).claimOwnership();
-
-      expect(await launcher.getManager()).to.equal(newManager.address);
-    });
-
-    it('claimOwnership emits an event', async () => {
-      const claimReceipt = await txConfirmation(launcher.connect(newManager).claimOwnership());
-
-      const event = claimReceipt.events?.find((e) => e.event == 'OwnershipTransferred');
-      expect(event).to.not.be.null;
-
-      if (event) {
-        expect(event.args?.previousManager).to.equal(manager.address);
-        expect(event.args?.newManager).to.equal(newManager.address);
-      }
-    });
-
-    it('claimOwnership reeploys the timelock', async () => {
-      const oldTimelock = await launcher.getTimelockController();
-      await launcher.connect(newManager).claimOwnership();
-
-      const newTimelock = await launcher.getTimelockController();
-      const timelockContract = await deployedAt('TimelockController', newTimelock);
-
-      expect(newTimelock).to.not.equal(oldTimelock);
-      expect(await timelockContract.getMinDelay()).to.equal(await launcher.MIN_TIMELOCK_DELAY());
+      it('manager can initiate ownership transfer', async () => {
+        // 2-step process, so the old manager is still in charge
+        expect(await launcher.getManager()).to.equal(manager.address);
+      });
+  
+      it('candidate can claimOwnership', async () => {
+        await launcher.connect(newManager).claimOwnership();
+  
+        expect(await launcher.getManager()).to.equal(newManager.address);
+      });
+  
+      it('claimOwnership emits an event', async () => {
+        const claimReceipt = await txConfirmation(launcher.connect(newManager).claimOwnership());
+  
+        const event = claimReceipt.events?.find((e) => e.event == 'OwnershipTransferred');
+        expect(event).to.not.be.null;
+  
+        if (event) {
+          expect(event.args?.previousManager).to.equal(manager.address);
+          expect(event.args?.newManager).to.equal(newManager.address);
+        }
+      });
+  
+      it('claimOwnership reeploys the timelock', async () => {
+        const oldTimelock = await launcher.getTimelockController();
+        await launcher.connect(newManager).claimOwnership();
+  
+        const newTimelock = await launcher.getTimelockController();
+        const timelockContract = await deployedAt(newTimelock, TimelockControllerArtifact.abi, admin);
+  
+        expect(newTimelock).to.not.equal(oldTimelock);
+        expect(await timelockContract.getMinDelay()).to.equal(await launcher.MIN_TIMELOCK_DELAY());
+      });  
     });
   });
 
   context('when fee recipient is changed', () => {
     it('reverts unless called by the timelock', async () => {
-      await expect(launcher.changeFeeRecipient(newFeeRecipient)).to.be.revertedWith('Must use timelock');
+      await expect(launcher.changeFeeRecipient(newFeeRecipient.address)).to.be.revertedWith('Must use timelock');
     });
 
     it('can change the fee recipient through the timelock', async () => {
@@ -137,104 +180,51 @@ describe('Copper LBP Launcher', () => {
     });
   });
 
-  describe('deploy LBP', () => {
+  type PoolConfig = {
+    name: string,
+    symbol: string,
+    tokens: string[],
+    amounts: BigNumber[],
+    weights: BigNumber[],
+    endWeights: BigNumber[],
+    fundTokenIndex: number,
+    swapFeePercentage: BigNumber,
+    userData: string,
+    startTime: BigNumber,
+    endTime: BigNumber,
+    owner: string
+  };
+
+  describe.only('deploy LBP', () => {
     const NAME = 'LBP Name';
     const SYMBOL = 'LBP';
-    const PERCENTAGE = bn(1e16);
-    let currentTime: BigNumber = bn(0);
-    let poolConfig: {
-      name: string;
-      symbol: string;
-      tokens: Contract[]; // DAI/NEO
-      amounts: BigNumber[];
-      weights: BigNumber[];
-      endWeights: BigNumber[];
-      fundTokenIndex: number;
-      swapFeePercentage: BigNumber;
-      userData: string;
-      startTime: BigNumber;
-      endTime: BigNumber;
-      owner: () => Promise<string>;
-    };
-    let threeTokenConfig: {
-      name: string;
-      symbol: string;
-      tokens: Contract[]; // DAI/NEO
-      amounts: BigNumber[];
-      weights: BigNumber[];
-      endWeights: BigNumber[];
-      fundTokenIndex: number;
-      swapFeePercentage: BigNumber;
-      userData: string;
-      startTime: BigNumber;
-      endTime: BigNumber;
-      owner: () => Promise<string>;
-    };
-    let mismatchedEndWeightsConfig: {
-      name: string;
-      symbol: string;
-      tokens: Contract[]; // DAI/NEO
-      amounts: BigNumber[];
-      weights: BigNumber[];
-      endWeights: BigNumber[];
-      fundTokenIndex: number;
-      swapFeePercentage: BigNumber;
-      userData: string;
-      startTime: BigNumber;
-      endTime: BigNumber;
-      owner: () => Promise<string>;
-    };
-    let invalidTimestampsConfig: {
-      name: string;
-      symbol: string;
-      tokens: Contract[]; // DAI/NEO
-      amounts: BigNumber[];
-      weights: BigNumber[];
-      endWeights: BigNumber[];
-      fundTokenIndex: number;
-      swapFeePercentage: BigNumber;
-      userData: string;
-      startTime: BigNumber;
-      endTime: BigNumber;
-      owner: () => Promise<string>;
-    };
-    let tooShortConfig: {
-      name: string;
-      symbol: string;
-      tokens: Contract[]; // DAI/NEO
-      amounts: BigNumber[];
-      weights: BigNumber[];
-      endWeights: BigNumber[];
-      fundTokenIndex: number;
-      swapFeePercentage: BigNumber;
-      userData: string;
-      startTime: BigNumber;
-      endTime: BigNumber;
-      owner: () => Promise<string>;
-    };
+    const PERCENTAGE = fp(0.01);
+    let currentTime: BigNumber = fp(0);
+    let poolConfig: PoolConfig, threeTokenConfig: PoolConfig, mismatchedEndWeightsConfig: PoolConfig;
+    let invalidTimestampsConfig: PoolConfig, tooShortConfig: PoolConfig;
 
-    beforeEach('get timestamp and pool config', async () => {
-      currentTime = await currentTimestamp();
+    beforeEach('setup pool config', async () => {
+      const amounts = [fp(1000), parseFixed('10', 8)];
 
       poolConfig = {
         name: NAME,
         symbol: SYMBOL,
-        tokens: [tokens[0], tokens[3]], // DAI/NEO
-        amounts: [fp(1000), fp(10)],
+        tokens: [tokens.DAI.address, tokens.WBTC.address],
+        amounts: amounts,
         weights: [fp(0.1), fp(0.9)],
         endWeights: [fp(0.9), fp(0.1)],
         fundTokenIndex: 0,
         swapFeePercentage: PERCENTAGE,
-        userData: '0x',
+        userData: WeightedPoolEncoder.joinInit(amounts),
         startTime: currentTime.add(10),
         endTime: currentTime.add(DAY * 3),
-        owner: poolOwner.getAddress,
+        owner: poolOwner.address,
       };
 
       threeTokenConfig = {
         name: NAME,
         symbol: SYMBOL,
-        tokens: [tokens[0], tokens[1], tokens[3]],
+        tokens: [tokens.DAI.address, tokens.USDC.address, tokens.NEO.address],
         amounts: [fp(1000), fp(100), fp(10)],
         weights: [fp(0.1), fp(0.2), fp(0.7)],
         endWeights: [fp(0.7), fp(0.2), fp(0.1)],
@@ -243,13 +233,13 @@ describe('Copper LBP Launcher', () => {
         userData: '0x',
         startTime: currentTime.add(10),
         endTime: currentTime.add(DAY * 3),
-        owner: poolOwner.getAddress,
+        owner: poolOwner.address,
       };
 
       mismatchedEndWeightsConfig = {
         name: NAME,
         symbol: SYMBOL,
-        tokens: [tokens[0], tokens[3]], // DAI/NEO
+        tokens: [tokens.DAI.address, tokens.NEO.address],
         amounts: [fp(1000), fp(10)],
         weights: [fp(0.1), fp(0.9)],
         endWeights: [fp(0.7), fp(0.2), fp(0.1)],
@@ -258,13 +248,13 @@ describe('Copper LBP Launcher', () => {
         userData: '0x',
         startTime: currentTime.add(10),
         endTime: currentTime.add(DAY * 3),
-        owner: poolOwner.getAddress,
+        owner: poolOwner.address,
       };
 
       invalidTimestampsConfig = {
         name: NAME,
         symbol: SYMBOL,
-        tokens: [tokens[0], tokens[3]], // DAI/NEO
+        tokens: [tokens.DAI.address, tokens.NEO.address],
         amounts: [fp(1000), fp(10)],
         weights: [fp(0.1), fp(0.9)],
         endWeights: [fp(0.9), fp(0.1)],
@@ -273,13 +263,13 @@ describe('Copper LBP Launcher', () => {
         userData: '0x',
         startTime: currentTime.add(DAY * 3),
         endTime: currentTime.add(10),
-        owner: poolOwner.getAddress,
+        owner: poolOwner.address,
       };
 
       tooShortConfig = {
         name: NAME,
         symbol: SYMBOL,
-        tokens: [tokens[0], tokens[3]], // DAI/NEO
+        tokens: [tokens.DAI.address, tokens.NEO.address],
         amounts: [fp(1000), fp(10)],
         weights: [fp(0.1), fp(0.9)],
         endWeights: [fp(0.9), fp(0.1)],
@@ -288,12 +278,14 @@ describe('Copper LBP Launcher', () => {
         userData: '0x',
         startTime: currentTime.add(10),
         endTime: currentTime.add(100),
-        owner: poolOwner.getAddress,
+        owner: poolOwner.address,
       };
+
+      currentTime = await currentTimestamp();
     });
 
     it('createAuction reverts unless called by the manager', async () => {
-      await expect(launcher.createAuction(poolConfig)).to.be.revertedWith('Caller is not manager');
+      await expect(launcher.connect(rando).createAuction(poolConfig)).to.be.revertedWith('Caller is not manager');
     });
 
     it('createAuction reverts if called with three tokens', async () => {
@@ -319,8 +311,14 @@ describe('Copper LBP Launcher', () => {
     });
 
     it('manager can call createAuction', async () => {
-      expect(true).to.be.true; // PoolCreated event
+      //const bal = await tokens.DAI.balanceOf(poolOwner.address);
+
+      const receipt = await txConfirmation(launcher.connect(manager).createAuction(poolConfig));
+  
+      const event = receipt.events?.find((e) => e.event == 'PoolCreated');
+      expect(event).to.not.be.null;
     });
+
     it('createAuction deploys and starts the LBP', async () => {
       expect(true).to.be.true;
     });
@@ -337,7 +335,7 @@ describe('Copper LBP Launcher', () => {
       });
     });
 
-    context('when pool ownership is transferred', () => {
+    context.skip('when pool ownership is transferred', () => {
       it('reverts if non-pool owner transfers ownership', async () => {
         expect(true).to.be.true;
       });

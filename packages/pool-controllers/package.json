@@ -42,7 +42,7 @@
     "eslint-plugin-mocha-no-only": "^1.1.1",
     "eslint-plugin-prettier": "^4.0.0",
     "ethereum-waffle": "^3.0.2",
-    "ethers": "^5.4.1",
+    "ethers": "^5.4.6",
     "hardhat": "^2.4.1",
     "mocha": "^8.2.1",
     "nodemon": "^2.0.4",
@@ -57,10 +57,6 @@
     "@balancer-labs/v2-pool-utils": "^2.0.1",
     "@balancer-labs/v2-pool-weighted": "^2.0.1",
     "@balancer-labs/v2-solidity-utils": "^2.0.0",
-    "@balancer-labs/v2-vault": "^2.0.0",
-    "@ethersproject/bignumber": "^5.4.1",
-    "@ethersproject/constants": "^5.4.0",
-    "@ethersproject/contracts": "^5.4.1",
-    "@ethersproject/providers": "^5.4.5"
+    "@balancer-labs/v2-vault": "^2.0.0"
   }
 }

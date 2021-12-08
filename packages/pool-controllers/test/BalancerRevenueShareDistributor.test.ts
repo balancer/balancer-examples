@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { BigNumber, formatFixed, parseFixed } from '@ethersproject/bignumber';
+import { BigNumber, parseFixed } from '@ethersproject/bignumber';
 import { Contract } from '@ethersproject/contracts';
 import { deploySortedTokens, TokenList } from '@balancer-examples/shared-dependencies';
 import { Vault } from '@balancer-labs/typechain';
@@ -14,7 +14,7 @@ describe('Balancer revenue share distributor', () => {
   const NAME = 'Copper';
   let tokens: TokenList;
   let vault: Vault;
-
+  
   async function deployTokens() {
     tokens = await deploySortedTokens(['DAI', 'USDC', 'WBTC', 'NEO'], [18, 6, 8, 0]);
   }
@@ -23,7 +23,7 @@ describe('Balancer revenue share distributor', () => {
     const [defaultDeployer] = await ethers.getSigners();
     const deployer = from || defaultDeployer;
     const factory = new ethers.ContractFactory(BalancerRevenueShareDistributorArtifact.abi, BalancerRevenueShareDistributorArtifact.bytecode, deployer);
-    const instance = await factory.deploy(deployer.address, ...params);
+    const instance = await factory.deploy(...params);
     return instance;
   }
 

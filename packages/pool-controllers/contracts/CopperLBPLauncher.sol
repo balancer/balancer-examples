@@ -111,6 +111,7 @@ contract CopperLBPLauncher {
      * @dev Reverts if called by any account other than the owner of the pool.
      */
     modifier onlyPoolOwner(address pool) {
+        require(_pools.contains(pool), "Invalid pool address");
         require(msg.sender == _poolData[pool].owner, "Caller is not pool owner");
         _;
     }

@@ -20,6 +20,8 @@ import {
 } from './weightedMath';
 import { BigNumber, formatFixed, parseFixed } from '@ethersproject/bignumber';
 import { WeiPerEther as ONE } from '@ethersproject/constants';
+import { Decimal } from 'decimal.js';
+import { fromFp, fp } from '../../numbers'
 
 function bnum(val: string | number | BigNumber): BigNumber {
   return BigNumber.from(val.toString());
@@ -36,8 +38,8 @@ const ZERO = BigNumber.from(0);
 export type WeightedPoolToken = Pick<NoNullableField<SubgraphToken>, 'address' | 'balance' | 'decimals' | 'weight'>;
 
 export type WeightedPoolPairData = PoolPairBase & {
-  weightIn: BigNumber;
-  weightOut: BigNumber;
+  weightIn: Decimal;
+  weightOut: Decimal;
 };
 
 export class WeightedPool implements PoolBase {
@@ -50,21 +52,8 @@ export class WeightedPool implements PoolBase {
   tokens: WeightedPoolToken[];
   totalWeight: BigNumber;
   tokensList: string[];
-  MAX_IN_RATIO = parseFixed('0.3', 18);
-  MAX_OUT_RATIO = parseFixed('0.3', 18);
-
-  static fromPool(pool: SubgraphPoolBase): WeightedPool {
-    if (!pool.totalWeight) throw new Error('WeightedPool missing totalWeight');
-    return new WeightedPool(
-      pool.id,
-      pool.address,
-      pool.swapFee,
-      pool.totalWeight,
-      pool.totalShares,
-      pool.tokens as WeightedPoolToken[],
-      pool.tokensList
-    );
-  }
+  MAX_IN_RATIO = new Decimal('0.3');
+  MAX_OUT_RATIO = new Decimal('0.3');
 
   constructor(
     id: string,
@@ -88,92 +77,33 @@ export class WeightedPool implements PoolBase {
     this.swapPairType = type;
   }
 
-  parsePoolPairData(tokenIn: string, tokenOut: string): WeightedPoolPairData {
-    const tokenIndexIn = this.tokens.findIndex((t) => getAddress(t.address) === getAddress(tokenIn));
-    if (tokenIndexIn < 0) throw 'Pool does not contain tokenIn';
-    const tI = this.tokens[tokenIndexIn];
-    const balanceIn = tI.balance;
-    const decimalsIn = tI.decimals;
-    const weightIn = parseFixed(tI.weight, 18).mul(ONE).div(this.totalWeight);
-
-    const tokenIndexOut = this.tokens.findIndex((t) => getAddress(t.address) === getAddress(tokenOut));
-    if (tokenIndexOut < 0) throw 'Pool does not contain tokenOut';
-    const tO = this.tokens[tokenIndexOut];
-    const balanceOut = tO.balance;
-    const decimalsOut = tO.decimals;
-    const weightOut = parseFixed(tO.weight, 18).mul(ONE).div(this.totalWeight);
-
-    const poolPairData: WeightedPoolPairData = {
-      id: this.id,
-      address: this.address,
-      poolType: this.poolType,
-      tokenIn: tokenIn,
-      tokenOut: tokenOut,
-      decimalsIn: Number(decimalsIn),
-      decimalsOut: Number(decimalsOut),
-      balanceIn: parseFixed(balanceIn, decimalsIn),
-      balanceOut: parseFixed(balanceOut, decimalsOut),
-      weightIn: weightIn,
-      weightOut: weightOut,
-      swapFee: this.swapFee,
-    };
-
-    return poolPairData;
-  }
-
-  // Normalized liquidity is an abstract term that can be thought of the
-  // inverse of the slippage. It is proportional to the token balances in the
-  // pool but also depends on the shape of the invariant curve.
-  // As a standard, we define normalized liquidity in tokenOut
-  getNormalizedLiquidity(poolPairData: WeightedPoolPairData): BigNumber {
-    return bnum(
-      formatFixed(
-        poolPairData.balanceOut.mul(poolPairData.weightIn).div(poolPairData.weightIn.add(poolPairData.weightOut)),
-        poolPairData.decimalsOut
-      )
-    );
-  }
-
-  getLimitAmountSwap(poolPairData: PoolPairBase, swapType: SwapTypes): BigNumber {
+  getLimitAmountSwap(poolPairData: PoolPairBase, swapType: SwapTypes): Decimal {
     if (swapType === SwapTypes.SwapExactIn) {
-      return bnum(formatFixed(poolPairData.balanceIn.mul(this.MAX_IN_RATIO).div(ONE), poolPairData.decimalsIn));
+      return poolPairData.balanceIn.mul(this.MAX_IN_RATIO);
     } else {
-      return bnum(formatFixed(poolPairData.balanceOut.mul(this.MAX_OUT_RATIO).div(ONE), poolPairData.decimalsOut));
+      return poolPairData.balanceOut.mul(this.MAX_OUT_RATIO);
     }
   }
 
-  // Updates the balance of a given token for the pool
-  updateTokenBalanceForPool(token: string, newBalance: BigNumber): void {
-    // token is BPT
-    if (this.address == token) {
-      this.totalShares = newBalance;
-    } else {
-      // token is underlying in the pool
-      const T = this.tokens.find((t) => isSameAddress(t.address, token));
-      if (!T) throw Error('Pool does not contain this token');
-      T.balance = formatFixed(newBalance, T.decimals);
-    }
-  }
-
-  _spotPriceAfterSwapExactTokenInForTokenOut(poolPairData: WeightedPoolPairData, amount: BigNumber): BigNumber {
+  _spotPriceAfterSwapExactTokenInForTokenOut(poolPairData: WeightedPoolPairData, amount: Decimal): Decimal {
     return _spotPriceAfterSwapExactTokenInForTokenOut(amount, poolPairData);
   }
 
-  _spotPriceAfterSwapTokenInForExactTokenOut(poolPairData: WeightedPoolPairData, amount: BigNumber): BigNumber {
+  _spotPriceAfterSwapTokenInForExactTokenOut(poolPairData: WeightedPoolPairData, amount: Decimal): Decimal{
     return _spotPriceAfterSwapTokenInForExactTokenOut(amount, poolPairData);
   }
 
   _derivativeSpotPriceAfterSwapExactTokenInForTokenOut(
     poolPairData: WeightedPoolPairData,
-    amount: BigNumber
-  ): BigNumber {
+    amount: Decimal 
+  ): Decimal {
     return _derivativeSpotPriceAfterSwapExactTokenInForTokenOut(amount, poolPairData);
   }
 
   _derivativeSpotPriceAfterSwapTokenInForExactTokenOut(
     poolPairData: WeightedPoolPairData,
-    amount: BigNumber
-  ): BigNumber {
+    amount: Decimal 
+  ): Decimal {
     return _derivativeSpotPriceAfterSwapTokenInForExactTokenOut(amount, poolPairData);
   }
 }

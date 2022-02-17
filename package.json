@@ -19,5 +19,8 @@
   "workspaces": [
     "packages/*"
   ],
-  "packageManager": "yarn@3.0.2"
+  "packageManager": "yarn@3.0.2",
+  "dependencies": {
+    "decimal.js": "^10.3.1"
+  }
 }

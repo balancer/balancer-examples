@@ -17,6 +17,22 @@ import { PoolState } from './types';
 import { HistoricalPrices, HistoricalPriceSnapshot, getHistoricalPriceData } from './priceProvider';
 import { identifyArbitrageOpp } from './arbOpp';
 import { deployWeightedPoolFactory, deployWeightedPool, initializeWeightedPool } from './testbench';
+import { formatFixed, parseFixed } from '@ethersproject/bignumber';
+import {
+  txConfirmation,
+  getBalancerContractArtifact,
+} from '@balancer-examples/shared-dependencies';
+
+
+import {
+  WeightedPoolEncoder,
+  toNormalizedWeights,
+  SwapKind,
+  FundManagement,
+  SingleSwap,
+  BatchSwapStep,
+} from '@balancer-labs/balancer-js';
+
 
 let vault: Vault;
 let tokens: TokenList;
@@ -44,16 +60,34 @@ async function getPoolState(pool: WeightedPool): Promise<PoolState> {
 async function onBlock(
   vault: Vault,
   pool: WeightedPool,
-  //blockNumber: number,
+  trader: SignerWithAddress,
+  poolTokens: string[],
   marketPrices: { [key: string]: number}
 ) {
-  const arbs = [];
-  //const marketPrices: HistoricalPrice[] = getPrices(blockNumber, tokens);
   let poolState = await getPoolState(pool);
-  const arb = identifyArbitrageOpp(marketPrices, poolState);
-  arbs.push(arb);
+  const arb = identifyArbitrageOpp(marketPrices, poolState, poolTokens);
 
-  // TODO execute arbs
+
+  const funds: FundManagement = {
+    sender: trader.address,
+    fromInternalBalance: false,
+    recipient: trader.address,
+    toInternalBalance: false,
+  };
+
+  const deadline = MaxUint256;
+  const limits = poolTokens.map(() => parseFixed('1000', 18));
+  let tx = await txConfirmation(
+    vault.connect(trader).batchSwap(SwapKind.GivenIn, arb, poolTokens, funds, limits, deadline)
+  );
+
+  const afterBatchSwap = await vault.getPoolTokens(poolState.id);
+
+  console.log(`After the batch swap, the pool holds:`);
+  poolTokens.forEach((token, i) => {
+    console.log(`  ${token}: ${formatFixed(afterBatchSwap.balances[i], 18)}`);
+  });
+  console.log('\n');
 }
 
 async function main() {
@@ -83,7 +117,7 @@ async function main() {
 
 
   for (const timestamp in priceData) {
-    await onBlock(vault, pool, priceData[timestamp]);
+    await onBlock(vault, pool, trader, poolTokens, priceData[timestamp]);
   }
   return;
 }

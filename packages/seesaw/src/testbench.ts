@@ -51,7 +51,6 @@ export async function initializeWeightedPool(poolId: string, vault: Vault, pool:
 
   const initialPoolBalances = poolTokens.map((pt) => {
     const priceUSD = parseUnits(initialPriceData[pt].toString(), 18)
-    console.log(valueUSD.toString(), priceUSD.toString());
     return valueUSD.mul(SCALE).div(priceUSD)
   })
 

@@ -1,4 +1,5 @@
 import { BigNumber } from '@ethersproject/bignumber';
+import { Decimal } from 'decimal.js';
 
 export type NoNullableField<T> = {
   [P in keyof T]: NonNullable<T[P]>;
@@ -36,13 +37,13 @@ export type PoolPairBase = {
   id: string;
   address: string;
   poolType: PoolTypes;
-  swapFee: BigNumber;
+  swapFee: Decimal;
   tokenIn: string;
   tokenOut: string;
   decimalsIn: number;
   decimalsOut: number;
-  balanceIn: BigNumber;
-  balanceOut: BigNumber;
+  balanceIn: Decimal;
+  balanceOut: Decimal;
 };
 
 export interface Swap {
@@ -152,20 +153,17 @@ export interface PoolBase {
   tokensList: string[];
   mainIndex?: number;
   setTypeForSwap: (type: SwapPairType) => void;
-  parsePoolPairData: (tokenIn: string, tokenOut: string) => PoolPairBase;
-  getNormalizedLiquidity: (poolPairData: PoolPairBase) => BigNumber;
-  getLimitAmountSwap: (poolPairData: PoolPairBase, swapType: SwapTypes) => BigNumber;
-  updateTokenBalanceForPool: (token: string, newBalance: BigNumber) => void;
-  _spotPriceAfterSwapExactTokenInForTokenOut: (poolPairData: PoolPairBase, amount: BigNumber) => BigNumber;
-  _spotPriceAfterSwapTokenInForExactTokenOut: (poolPairData: PoolPairBase, amount: BigNumber) => BigNumber;
+  getLimitAmountSwap: (poolPairData: PoolPairBase, swapType: SwapTypes) => Decimal;
+  _spotPriceAfterSwapExactTokenInForTokenOut: (poolPairData: PoolPairBase, amount: Decimal) => Decimal;
+  _spotPriceAfterSwapTokenInForExactTokenOut: (poolPairData: PoolPairBase, amount: Decimal) => Decimal;
   _derivativeSpotPriceAfterSwapExactTokenInForTokenOut: (
     poolPairData: PoolPairBase,
-    amount: BigNumber
-  ) => BigNumber;
+    amount: Decimal 
+  ) => Decimal;
   _derivativeSpotPriceAfterSwapTokenInForExactTokenOut: (
     poolPairData: PoolPairBase,
-    amount: BigNumber
-  ) => BigNumber;
+    amount: Decimal
+  ) => Decimal;
 }
 
 export interface WeightedPool extends PoolBase {

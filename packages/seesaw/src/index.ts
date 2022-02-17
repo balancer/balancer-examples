@@ -108,7 +108,11 @@ async function main() {
   console.log(`Successfully deployed Pool! 🎉\n`);
 
   const coingeckoTokenNames = ['balancer', 'ethereum'];
-  const priceData: HistoricalPrices = await getHistoricalPriceData(coingeckoTokenNames, poolTokens);
+
+  const begin = new Date(2022, 1, 1)
+  const end = new Date(2022, 1, 5)
+
+  const priceData: HistoricalPrices = await getHistoricalPriceData(begin, end, coingeckoTokenNames, poolTokens);
 
   const initialTimestamp = Object.keys(priceData)[0]
   const initialPriceData = priceData[initialTimestamp]

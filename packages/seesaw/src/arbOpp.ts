@@ -8,6 +8,7 @@ import { fromFp, fp, fromFpDecimals } from './numbers'
 import { Decimal } from 'decimal.js';
 
 const SCALE = parseUnits('1');
+const ONE = new Decimal('1');
 
 function multiplyFP(a: BigNumber, b: BigNumber): BigNumber {
   return a.mul(b).div(SCALE);
@@ -32,7 +33,7 @@ export function getAmountInForSpotPriceAfterSwapNoFees(pairData: WeightedPoolPai
 
   const exponent = pairData.weightOut.div(pairData.weightIn.add(pairData.weightOut)).sub(new Decimal(1));
   return pairData.balanceIn.mul(
-    desiredSpotPrice.div(spotPrice).pow(exponent)
+    desiredSpotPrice.div(spotPrice).pow(exponent).sub(ONE)
   );
 }
 
@@ -60,7 +61,7 @@ function getExtraAmountIn(
   amountIn: Decimal,
   desiredSpotPrice: Decimal
 ): Decimal {
-  const swapFeeComplement = new Decimal('1').sub(p.swapFee)
+  const swapFeeComplement = ONE.sub(p.swapFee)
   return 
   swapFeeComplement
     .mul(amountIn)
@@ -71,8 +72,10 @@ function getExtraAmountIn(
         p.swapFee
         .mul(p.balanceIn)
         .div(amountIn.add(p.balanceIn))
-        .add(swapFeeComplement)
-        .mul(p.weightIn.div(p.weightOut).add(1))
+        .add(
+          swapFeeComplement
+          .mul(p.weightIn.div(p.weightOut).add(ONE))
+        )
       )
     )
 }
@@ -94,26 +97,47 @@ export function getAmountInForSpotPrice(
 }
 
 export function identifyArbitrageOpp(marketPrices: { [key: string]: number }, poolState: PoolState, poolTokens: string[]): BatchSwapStep[] {
-  const assetInIndex = 0; // TODO
-  const assetOutIndex = 1; // TODO
 
-  const weightedPoolPairData = poolPairData(poolState, assetInIndex, assetOutIndex);
-  const NUM_ITERATIONS = 10;
+  // First determine if we should be trading first token for second,
+  // or second token for first
+  let assetInIndex = 0
+  let assetOutIndex = 1
 
-  //console.log(marketPrices);
- 
-  const desiredSpotPrice = new Decimal(
-    (marketPrices[weightedPoolPairData.tokenIn] / marketPrices[weightedPoolPairData.tokenOut]).toString()
+  const poolTokenIn = poolTokens[assetInIndex];
+  const poolTokenOut = poolTokens[assetOutIndex];
+
+  let pairData = poolPairData(poolState, assetInIndex, assetOutIndex);
+  let spotPrice: Decimal = getSpotPrice(pairData);
+
+  let desiredSpotPrice = new Decimal(
+      (marketPrices[pairData.tokenIn] / marketPrices[pairData.tokenOut]).toString()
   );
-  const amount = getAmountInForSpotPrice(weightedPoolPairData, desiredSpotPrice, NUM_ITERATIONS);
+
+  // If we need to trade asset 2 for asset 1 we have to switch directions
+  if (desiredSpotPrice > spotPrice) {
+    assetInIndex = 1
+    assetOutIndex = 0
+
+    pairData = poolPairData(poolState, assetInIndex, assetOutIndex);
+
+    desiredSpotPrice = new Decimal(
+      (marketPrices[pairData.tokenIn] / marketPrices[pairData.tokenOut]).toString()
+    );
+  }
+
+  const NUM_ITERATIONS = 10;
+ 
+  const amountDecimal = getAmountInForSpotPrice(pairData, desiredSpotPrice, NUM_ITERATIONS);
+  const amount = fp(amountDecimal);
+
+  console.log("Trading ", amountDecimal, ' ', pairData.tokenIn, ' for ', pairData.tokenOut);
 
   // determine how much
   const arb: BatchSwapStep = {
     poolId: poolState.id,
     assetInIndex,
     assetOutIndex,
-    //amount: fp(amount), // TODO
-    amount: fp(new Decimal('.01')),
+    amount,
     userData: '0x',
   };
   return [arb];

@@ -30,7 +30,6 @@ export async function deployWeightedPool(
 ): Promise<WeightedPool> {
   const name = 'My Test Balancer Pool';
   const symbol = 'POOL';
-  //const normalizedWeights = [0.5, 0.5];
   const normalizedWeights = toNormalizedWeights(poolTokens.map(() => One));
   const swapFeePercentage = parseFixed('1', 12);
   const delegateOwner = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';

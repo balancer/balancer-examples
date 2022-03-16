@@ -1,0 +1,66 @@
+{
+  "name": "@balancer-examples/pool-permissioned",
+  "private": true,
+  "description": "Example permissioned pool type",
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/balancer-labs/balancer-quickstart-template.git",
+    "directory": "package/pool-permissioned"
+  },
+  "bugs": {
+    "url": "https://github.com/balancer-labs/balancer-quickstart-template/issues"
+  },
+  "files": [
+    "contracts/**/*",
+    "!contracts/test/*"
+  ],
+  "scripts": {
+    "build": "yarn compile",
+    "compile": "hardhat compile",
+    "compile:watch": "nodemon --ext sol --exec yarn compile",
+    "lint": "yarn lint:solidity && yarn lint:typescript",
+    "lint:solidity": "solhint 'contracts/**/*.sol'",
+    "lint:typescript": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
+    "test": "yarn compile && mocha --extension ts --require hardhat/register --recursive",
+    "testhh": "hardhat test",
+    "test:fast": "yarn compile && mocha --extension ts --require hardhat/register --recursive --parallel --exit",
+    "test:watch": "nodemon --ext js,ts --watch test --watch lib --exec 'clear && yarn test --no-compile'"
+  },
+  "devDependencies": {
+    "@balancer-labs/typechain": "^1.0.0",
+    "@ethersproject/abi": "^5.4.0",
+    "@ethersproject/bytes": "^5.4.0",
+    "@ethersproject/constants": "^5.4.0",
+    "@ethersproject/providers": "^5.4.5",
+    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "@nomiclabs/hardhat-waffle": "^2.0.0",
+    "@types/chai": "^4.2.12",
+    "@types/mocha": "^8.0.3",
+    "@types/node": "^14.6.0",
+    "@typescript-eslint/eslint-plugin": "^4.1.1",
+    "@typescript-eslint/parser": "^4.1.1",
+    "chai": "^4.2.0",
+    "eslint": "^7.32.0",
+    "eslint-plugin-mocha-no-only": "^1.1.1",
+    "eslint-plugin-prettier": "^4.0.0",
+    "ethereum-waffle": "^3.0.2",
+    "ethers": "^5.4.1",
+    "hardhat": "^2.4.1",
+    "mocha": "^8.2.1",
+    "nodemon": "^2.0.4",
+    "prettier": "^2.4.0",
+    "prettier-plugin-solidity": "^1.0.0-beta.18",
+    "solhint": "^3.2.0",
+    "solhint-plugin-prettier": "^0.0.5",
+    "ts-node": "^8.10.2",
+    "typescript": "^4.0.2"
+  },
+  "dependencies": {
+    "@balancer-labs/v2-deployments": "^2.0.1",
+    "@balancer-labs/v2-pool-utils": "^2.0.1",
+    "@balancer-labs/v2-solidity-utils": "^2.0.0",
+    "@balancer-labs/v2-vault": "^2.0.0",
+    "@ethersproject/contracts": "5.4.0"
+  }
+}

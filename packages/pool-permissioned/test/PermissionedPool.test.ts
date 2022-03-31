@@ -224,37 +224,37 @@ describe('PermissionedPool', function () {
           });
 
           it('allows an approved LP to exit', async () => {
-          const userData = WeightedPoolEncoder.exitBPTInForExactTokensOut(tokenAddresses.map(() => tokenExitAmount), MaxUint256);
+            const userData = WeightedPoolEncoder.exitBPTInForExactTokensOut(tokenAddresses.map(() => tokenExitAmount), MaxUint256);
 
-          const exitRequest = {
-            assets: tokenAddresses,
-            minAmountsOut: tokenAddresses.map(() => (0.0)),
-            userData,
-            toInternalBalance: false,
-          };
+            const exitRequest = {
+              assets: tokenAddresses,
+              minAmountsOut: tokenAddresses.map(() => (0.0)),
+              userData,
+              toInternalBalance: false,
+            };
 
-          await txConfirmation(
-            vault
-              .connect(liquidityProvider)
-              .exitPool(poolId, liquidityProvider.address, liquidityProvider.address, exitRequest));
+            await txConfirmation(
+              vault
+                .connect(liquidityProvider)
+                .exitPool(poolId, liquidityProvider.address, liquidityProvider.address, exitRequest));
           });
 
           it('reverts when a previously approved but now disallowed LP tries to exit', async () => {
-          await registry.removeAllowedAddress(allowlistId, trader.address);
+            await registry.removeAllowedAddress(allowlistId, trader.address);
 
-          const userData = WeightedPoolEncoder.exitBPTInForExactTokensOut(tokenAddresses.map(() => tokenExitAmount), MaxUint256);
+            const userData = WeightedPoolEncoder.exitBPTInForExactTokensOut(tokenAddresses.map(() => tokenExitAmount), MaxUint256);
 
-          const exitRequest = {
-            assets: tokenAddresses,
-            minAmountsOut: tokenAddresses.map(() => (0.0)),
-            userData,
-            toInternalBalance: false,
-          };
+            const exitRequest = {
+              assets: tokenAddresses,
+              minAmountsOut: tokenAddresses.map(() => (0.0)),
+              userData,
+              toInternalBalance: false,
+            };
 
-          await txConfirmation(
-            vault
-              .connect(liquidityProvider)
-              .exitPool(poolId, liquidityProvider.address, liquidityProvider.address, exitRequest));
+            await txConfirmation(
+              vault
+                .connect(liquidityProvider)
+                .exitPool(poolId, liquidityProvider.address, liquidityProvider.address, exitRequest));
           });
 
         });

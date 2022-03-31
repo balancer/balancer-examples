@@ -224,11 +224,14 @@ describe('PermissionedPool', function () {
           });
 
           it('allows an approved LP to exit', async () => {
-            const userData = WeightedPoolEncoder.exitBPTInForExactTokensOut(tokenAddresses.map(() => tokenExitAmount), MaxUint256);
+            const userData = WeightedPoolEncoder.exitBPTInForExactTokensOut(
+              tokenAddresses.map(() => tokenExitAmount),
+              MaxUint256
+            );
 
             const exitRequest = {
               assets: tokenAddresses,
-              minAmountsOut: tokenAddresses.map(() => (0.0)),
+              minAmountsOut: tokenAddresses.map(() => fp(0)),
               userData,
               toInternalBalance: false,
             };
@@ -236,17 +239,21 @@ describe('PermissionedPool', function () {
             await txConfirmation(
               vault
                 .connect(liquidityProvider)
-                .exitPool(poolId, liquidityProvider.address, liquidityProvider.address, exitRequest));
+                .exitPool(poolId, liquidityProvider.address, liquidityProvider.address, exitRequest)
+            );
           });
 
           it('reverts when a previously approved but now disallowed LP tries to exit', async () => {
             await registry.removeAllowedAddress(allowlistId, trader.address);
 
-            const userData = WeightedPoolEncoder.exitBPTInForExactTokensOut(tokenAddresses.map(() => tokenExitAmount), MaxUint256);
+            const userData = WeightedPoolEncoder.exitBPTInForExactTokensOut(
+              tokenAddresses.map(() => tokenExitAmount),
+              MaxUint256
+            );
 
             const exitRequest = {
               assets: tokenAddresses,
-              minAmountsOut: tokenAddresses.map(() => (0.0)),
+              minAmountsOut: tokenAddresses.map(() => fp(0)),
               userData,
               toInternalBalance: false,
             };
@@ -254,9 +261,9 @@ describe('PermissionedPool', function () {
             await txConfirmation(
               vault
                 .connect(liquidityProvider)
-                .exitPool(poolId, liquidityProvider.address, liquidityProvider.address, exitRequest));
+                .exitPool(poolId, liquidityProvider.address, liquidityProvider.address, exitRequest)
+            );
           });
-
         });
       });
     });

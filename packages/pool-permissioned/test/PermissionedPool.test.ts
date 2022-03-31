@@ -19,6 +19,7 @@ import { MaxUint256 } from '@ethersproject/constants';
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 const tokenAmount = fp(100);
+const tokenExitAmount = fp(10);
 
 describe('PermissionedPool', function () {
   let vault: Vault;
@@ -167,6 +168,35 @@ describe('PermissionedPool', function () {
             );
           });
 
+          it('reverts when trader is approved and then unapproved', async () => {
+            await registry.addAllowedAddress(allowlistId, trader.address);
+            await registry.removeAllowedAddress(allowlistId, trader.address);
+
+            const amount = fp(5);
+            const funds: FundManagement = {
+              sender: trader.address,
+              fromInternalBalance: false,
+              recipient: trader.address,
+              toInternalBalance: false,
+            };
+
+            const deadline = MaxUint256;
+
+            const step1: BatchSwapStep = {
+              poolId,
+              assetInIndex: 0,
+              assetOutIndex: 1,
+              amount,
+              userData: '0x',
+            };
+
+            const swaps = [step1];
+            const limits = tokenAddresses.map(() => fp(1000));
+            await expect(
+              vault.connect(trader).batchSwap(SwapKind.GivenIn, swaps, tokenAddresses, funds, limits, deadline)
+            ).to.be.revertedWith('Swap not allowed');
+          });
+
           it('reverts when trader is unapproved', async () => {
             const amount = fp(5);
             const funds: FundManagement = {
@@ -191,6 +221,48 @@ describe('PermissionedPool', function () {
             await expect(
               vault.connect(trader).batchSwap(SwapKind.GivenIn, swaps, tokenAddresses, funds, limits, deadline)
             ).to.be.revertedWith('Swap not allowed');
+          });
+
+          it('allows an approved LP to exit', async () => {
+            const userData = WeightedPoolEncoder.exitBPTInForExactTokensOut(
+              tokenAddresses.map(() => tokenExitAmount),
+              MaxUint256
+            );
+
+            const exitRequest = {
+              assets: tokenAddresses,
+              minAmountsOut: tokenAddresses.map(() => fp(0)),
+              userData,
+              toInternalBalance: false,
+            };
+
+            await txConfirmation(
+              vault
+                .connect(liquidityProvider)
+                .exitPool(poolId, liquidityProvider.address, liquidityProvider.address, exitRequest)
+            );
+          });
+
+          it('reverts when a previously approved but now disallowed LP tries to exit', async () => {
+            await registry.removeAllowedAddress(allowlistId, trader.address);
+
+            const userData = WeightedPoolEncoder.exitBPTInForExactTokensOut(
+              tokenAddresses.map(() => tokenExitAmount),
+              MaxUint256
+            );
+
+            const exitRequest = {
+              assets: tokenAddresses,
+              minAmountsOut: tokenAddresses.map(() => fp(0)),
+              userData,
+              toInternalBalance: false,
+            };
+
+            await txConfirmation(
+              vault
+                .connect(liquidityProvider)
+                .exitPool(poolId, liquidityProvider.address, liquidityProvider.address, exitRequest)
+            );
           });
         });
       });

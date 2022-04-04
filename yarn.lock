@@ -73,6 +73,45 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@balancer-examples/pool-permissioned@workspace:packages/pool-permissioned":
+  version: 0.0.0-use.local
+  resolution: "@balancer-examples/pool-permissioned@workspace:packages/pool-permissioned"
+  dependencies:
+    "@balancer-labs/typechain": ^1.0.0
+    "@balancer-labs/v2-deployments": ^2.0.1
+    "@balancer-labs/v2-pool-utils": ^2.0.1
+    "@balancer-labs/v2-solidity-utils": ^2.0.0
+    "@balancer-labs/v2-vault": ^2.0.0
+    "@ethersproject/abi": ^5.4.0
+    "@ethersproject/bytes": ^5.4.0
+    "@ethersproject/constants": ^5.4.0
+    "@ethersproject/contracts": 5.4.0
+    "@ethersproject/providers": ^5.4.5
+    "@nomiclabs/hardhat-ethers": ^2.0.1
+    "@nomiclabs/hardhat-waffle": ^2.0.0
+    "@types/chai": ^4.2.12
+    "@types/mocha": ^8.0.3
+    "@types/node": ^14.6.0
+    "@typescript-eslint/eslint-plugin": ^4.1.1
+    "@typescript-eslint/parser": ^4.1.1
+    chai: ^4.2.0
+    eslint: ^7.32.0
+    eslint-plugin-mocha-no-only: ^1.1.1
+    eslint-plugin-prettier: ^4.0.0
+    ethereum-waffle: ^3.0.2
+    ethers: ^5.4.1
+    hardhat: ^2.4.1
+    mocha: ^8.2.1
+    nodemon: ^2.0.4
+    prettier: ^2.4.0
+    prettier-plugin-solidity: ^1.0.0-beta.18
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.5
+    ts-node: ^8.10.2
+    typescript: ^4.0.2
+  languageName: unknown
+  linkType: soft
+
 "@balancer-examples/shared-dependencies@workspace:packages/shared-dependencies":
   version: 0.0.0-use.local
   resolution: "@balancer-examples/shared-dependencies@workspace:packages/shared-dependencies"
@@ -83,9 +122,11 @@ __metadata:
     "@balancer-labs/v2-pool-weighted": ^2.0.1
     "@balancer-labs/v2-solidity-utils": ^2.0.0
     "@balancer-labs/v2-vault": ^2.0.0
+    "@ethersproject/abi": ^5.4.0
     "@ethersproject/bignumber": ^5.4.1
+    "@ethersproject/bytes": ^5.4.0
     "@ethersproject/constants": ^5.4.0
-    "@ethersproject/contracts": ^5.4.1
+    "@ethersproject/contracts": 5.4.0
     "@ethersproject/providers": ^5.4.5
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
@@ -96,6 +137,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": ^4.1.1
     "@typescript-eslint/parser": ^4.1.1
     chai: ^4.2.0
+    decimal.js: ^10.3.1
     eslint: ^7.32.0
     eslint-plugin-mocha-no-only: ^1.1.1
     eslint-plugin-prettier: ^4.0.0
@@ -146,7 +188,9 @@ __metadata:
     "@balancer-labs/v2-pool-weighted": ^2.0.1
     "@balancer-labs/v2-solidity-utils": ^2.0.0
     "@balancer-labs/v2-vault": ^2.0.0
+    "@ethersproject/abi": ^5.4.0
     "@ethersproject/bignumber": ^5.4.1
+    "@ethersproject/bytes": ^5.4.0
     "@ethersproject/constants": ^5.4.0
     "@ethersproject/contracts": ^5.4.1
     "@ethersproject/providers": ^5.4.5
@@ -195,6 +239,16 @@ __metadata:
     "@balancer-labs/v2-solidity-utils": 2.0.0
     "@balancer-labs/v2-vault": 2.0.0
   checksum: 5291b2e18ea39f10b12a76ea220b595f733a8ee3257ae360a1c8415a16db3c96c914605cb363d3179963997152226aca1553008e7533dd13f250e9ac1580df64
+  languageName: node
+  linkType: hard
+
+"@balancer-labs/v2-deployments@npm:^2.0.1":
+  version: 2.3.0
+  resolution: "@balancer-labs/v2-deployments@npm:2.3.0"
+  peerDependencies:
+    "@nomiclabs/hardhat-ethers": ^2.0.1
+    hardhat: ^2.4.1
+  checksum: ff639d7090d0e0075522fde384d47a048a0e079eddce45f22ed0e909807e0b4bfcd90c8c32de2f383628b98105b3ae2ac99e57ab24f65abc316451f329ee55ec
   languageName: node
   linkType: hard
 
@@ -3990,6 +4044,13 @@ __metadata:
   version: 4.0.0
   resolution: "decamelize@npm:4.0.0"
   checksum: b7d09b82652c39eead4d6678bb578e3bebd848add894b76d0f6b395bc45b2d692fb88d977e7cfb93c4ed6c119b05a1347cef261174916c2e75c0a8ca57da1809
+  languageName: node
+  linkType: hard
+
+"decimal.js@npm:^10.3.1":
+  version: 10.3.1
+  resolution: "decimal.js@npm:10.3.1"
+  checksum: 0351ac9f05fe050f23227aa6a4573bee2d58fa7378fcf28d969a8c789525032effb488a90320fd3fe86a66e17b4bc507d811b15eada5b7f0e7ec5d2af4c24a59
   languageName: node
   linkType: hard
 

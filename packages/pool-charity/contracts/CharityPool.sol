@@ -57,29 +57,28 @@ contract CharityPool is WeightedPool {
         _charity = params.charity;
     }
 
-
     // pool holds the fees it collects
     function payProtocolFees(uint256 bptAmount) internal {
-      _mintPoolTokens(address(this), bptAmount);
+        _mintPoolTokens(address(this), bptAmount);
     }
 
     // anyone can pay tokens out to charity
     function payoutToCharity() public {
-      (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-      uint256[] memory minAmountsOut = new uint256[](tokens.length);
-      uint256 bptIn = balanceOf(address(this));
-      uint256 exitKind = 2; // WeightedPoolUserDataHelpers.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256[] memory minAmountsOut = new uint256[](tokens.length);
+        uint256 bptIn = balanceOf(address(this));
+        uint256 exitKind = 2; // WeightedPoolUserDataHelpers.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT
 
-      getVault().exitPool(
-        getPoolId(),
-        address(this),
-        payable(_charity),
-        IVault.ExitPoolRequest({
-          assets: _translateToIAsset(tokens),
-          minAmountsOut: minAmountsOut,
-          userData: abi.encode(exitKind, bptIn),
-          toInternalBalance: false
-        })
-      );
+        getVault().exitPool(
+            getPoolId(),
+            address(this),
+            payable(_charity),
+            IVault.ExitPoolRequest({
+                assets: _translateToIAsset(tokens),
+                minAmountsOut: minAmountsOut,
+                userData: abi.encode(exitKind, bptIn),
+                toInternalBalance: false
+            })
+        );
     }
 }

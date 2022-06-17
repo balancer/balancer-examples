@@ -59,7 +59,9 @@
     "@balancer-labs/v2-pool-weighted": "^2.0.1",
     "@balancer-labs/v2-solidity-utils": "^2.0.0",
     "@balancer-labs/v2-vault": "^2.0.0",
+    "@ethersproject/abi": "^5.4.0",
     "@ethersproject/bignumber": "^5.4.1",
+    "@ethersproject/bytes": "^5.4.0",
     "@ethersproject/constants": "^5.4.0",
     "@ethersproject/contracts": "^5.4.1",
     "@ethersproject/providers": "^5.4.5"

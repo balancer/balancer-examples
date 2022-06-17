@@ -10,18 +10,23 @@ import TestWETHArtifact from './artifacts/contracts/TestWETH.sol/TestWETH.json';
 import { getBalancerContractAbi, getBalancerContractBytecode } from '@balancer-labs/v2-deployments';
 import { JsonFragment } from '@ethersproject/abi';
 
+export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+export const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
 export type TokenList = Dictionary<Contract>;
 
 export const tokenSymbols = Array.from({ length: 100 }, (_, i) => `TKN${i}`);
 
 export async function getSigners(): Promise<{
+  deployer: SignerWithAddress;
   admin: SignerWithAddress;
   creator: SignerWithAddress;
+  liquidityProvider: SignerWithAddress;
   trader: SignerWithAddress;
 }> {
-  const [, admin, creator, trader] = await ethers.getSigners();
+  const [deployer, admin, creator, liquidityProvider, trader] = await ethers.getSigners();
 
-  return { admin, creator, trader };
+  return { deployer, admin, creator, liquidityProvider, trader };
 }
 
 export async function txConfirmation(tx: ContractTransaction | Promise<ContractTransaction>): Promise<ContractReceipt> {
@@ -56,9 +61,11 @@ export async function deployVault(admin: string): Promise<Vault> {
 export async function setupEnvironment(): Promise<{
   vault: Vault;
   tokens: TokenList;
+  deployer: SignerWithAddress;
+  liquidityProvider: SignerWithAddress;
   trader: SignerWithAddress;
 }> {
-  const { admin, creator, trader } = await getSigners();
+  const { deployer, admin, creator, liquidityProvider, trader } = await getSigners();
   const vault: Vault = await deployVault(admin.address);
 
   const tokens = await deploySortedTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
@@ -67,12 +74,16 @@ export async function setupEnvironment(): Promise<{
     // creator tokens are used to initialize pools, but tokens are only minted when required
     await tokens[symbol].connect(creator).approve(vault.address, MaxUint256);
 
+    // liquidity provider tokens are used to provide liquidity and not have non-zero balances
+    await mintTokens(tokens, symbol, liquidityProvider, 200e18);
+    await tokens[symbol].connect(liquidityProvider).approve(vault.address, MaxUint256);
+
     // trader tokens are used to trade and not have non-zero balances
     await mintTokens(tokens, symbol, trader, 200e18);
     await tokens[symbol].connect(trader).approve(vault.address, MaxUint256);
   }
 
-  return { vault, tokens, trader };
+  return { vault, tokens, deployer, liquidityProvider, trader };
 }
 
 export function pickTokenAddresses(tokens: TokenList, size: number, offset?: number): string[] {
